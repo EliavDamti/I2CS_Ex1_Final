@@ -25,6 +25,7 @@ The entry point is python Ex0.py file.nrrd file.csv file.mp4.
 | FR-10 | Encode one uniformly sized RGB H.264/yuv420p frame per record at 2 playback FPS. | Decode actual MP4, count frames, check dimensions and order |
 | FR-11 | Normalize display globally, including zero, and center each projection on an even-sized canvas. | Normalization and video tests |
 | FR-12 | Reject invalid files/records/geometry without silently losing a populated CSV record. | Negative CLI/parser tests |
+| FR-13 | Provide reproducible unsigned NRRD generation and verified public MRI provenance. | Generator reload/hash tests and recorded MRI voxel comparison |
 
 ## Decisions resolving assignment ambiguities
 
@@ -41,6 +42,8 @@ origin, directions or anisotropic spacing.
   projections, with hardware, dependency versions, repeated timings and output
   sizes recorded. This is distinct from the MP4 playback rate. Report each
   case individually; a small-plane result does not establish all-plane speed.
+  The measured path uses the Numba dependency after warmup; first-use
+  compilation is recorded separately and NumPy fallback speed is not assumed.
 - NFR-02: Maintain independent expected-value tests, including the full
   NRRD->CSV->MP4 demonstration.
 - NFR-03: Keep projection computation separate from parsing and video display.

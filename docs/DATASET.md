@@ -1,228 +1,131 @@
-# Dataset Documentation – Ex1
+# Dataset definition and reproducibility
 
-**Project:** Introduction to Software Engineering – 3D Volume Plane Projection  
-**Status:** Dataset definition and initial validation completed
+Revised 2026-11-01. The repository contains generators, CSV definitions and
+small result artifacts; large NRRD inputs are excluded from Git.
 
-## 1. Purpose
+## MRHead medical sample
 
-This document describes the datasets used to develop, test, and benchmark the triangle and trapezoid projection algorithms.
+The original local demonstration input is data/MRHead_1.nrrd. The public
+source is 3D Slicer's MRHead sample, documented in
+[SampleData.py](https://github.com/Slicer/Slicer/blob/main/Modules/Scripted/SampleData/SampleData.py).
+The current canonical file is available from this
+[direct checksum-addressed download](https://github.com/Slicer/SlicerTestingData/releases/download/SHA256/cc211f0dfd9a05ca3841ce1141b292898b2dd2d3f08286affadf823a7e58df93).
 
-We use two categories of data:
+Download and verify it without overwriting the original dataset:
 
-1. **Real MRI data** to demonstrate the projection algorithms on a medical volume.
-2. **Synthetic volumes** to verify correctness and measure runtime performance.
+```bash
+python -m scripts.download_mri
+python Ex0.py data/MRHead-canonical.nrrd planes.csv results/demo-canonical.mp4
+```
 
-## 2. Real MRI Dataset
-
-The primary medical dataset is `MRHead_1.nrrd`, obtained from the sample MRI resource referenced in the assignment.
-
-The file was successfully opened in 3D Slicer and loaded into Python using the `pynrrd` library.
-
-### 2.1 Volume Properties
-
-The following values were obtained by reading the actual NRRD header and inspecting the NumPy array.
+The downloader checks the published SHA256 before writing, refuses an existing
+destination and does not run as part of automated tests. Its checksum failure
+and overwrite protection are tested without network access.
 
 | Property | Value |
 |---|---|
-| Filename | `MRHead_1.nrrd` |
-| Format | NRRD |
-| Dimensions | 3 |
-| Shape | 256 × 256 × 130 |
-| Total voxels | 8,519,680 |
-| Data type | `int16` |
-| NRRD type | `short` |
-| Minimum intensity | 0 |
-| Maximum intensity | 279 |
-| Byte order | Little-endian |
-| Encoding | gzip |
-| Coordinate space | Left-Posterior-Superior (LPS) |
+| Array shape in index_order="F" | 256 x 256 x 130 |
+| Voxels | 8,519,680 |
+| NumPy dtype / NRRD type | int16 / short |
+| Observed intensities | 0..279 |
+| Encoding | gzip, little endian |
+| Space | Left-Posterior-Superior |
+| Original local compressed-file SHA256 | e9b54e8855e9024f2238e27224702c1dcb49c64407d937499a3cc42fb1114c8b |
+| Canonical compressed-file SHA256 | cc211f0dfd9a05ca3841ce1141b292898b2dd2d3f08286affadf823a7e58df93 |
+| Shared voxel SHA256, C-order bytes | 2ba83ea952f3a580bae7db65c7a4724c0c4d9d247445d4ff8db94c03f25a591a |
 
-Although the assignment describes unsigned 8-, 16- and 32-bit values, this sample dataset uses signed 16-bit storage. All observed intensities are nonnegative.
+The canonical file was downloaded and its hash verified during this repair.
+Both files were loaded; the voxel arrays were exactly equal, despite different
+compressed-file bytes. The original filename is retained for the submitted
+demonstration. Source data provenance and distribution notes are maintained by
+[Slicer](https://github.com/Slicer/Slicer/blob/main/Modules/Scripted/SampleData/SampleData.py).
 
-The implementation preserves the source data type during projection.
+The original header's direction vectors are (0,1,0), (0,0,-1) and
+(-1.29999542,0,0), with origin (86.64489746,-133.92860413,116.78569794).
+The physical spacing is therefore anisotropic. All CSV coordinates are
+**voxel indices** M[x,y,z]; these physical metadata are not applied.
+The signed-short dtype is supported as a documented extension to the
+assignment's three unsigned integer types.
 
-### 2.2 Spatial Metadata
+## Synthetic NRRD suite
 
-The NRRD header reports the following space directions:
+Generate three deterministic datasets and a valid three-plane CSV:
 
-```text
-( 0.000000, 1.000000,  0.000000)
-( 0.000000, 0.000000, -1.000000)
-(-1.299995, 0.000000, 0.000000)
+```bash
+python -m scripts.generate_datasets
+python Ex0.py data/generated/synthetic-uint32.nrrd data/generated/planes.csv results/synthetic-uint32.mp4
 ```
 
-The space origin is:
+An optional output directory is accepted, for example:
 
-```text
-(86.644897, -133.928604, 116.785698)
+```bash
+python -m scripts.generate_datasets data/generated
 ```
 
-The directions describe the physical displacement associated with moving by one index along each volume axis.
+| File | Shape | Dtype | Range |
+|---|---|---|---|
+| synthetic-uint8.nrrd | 16 x 16 x 16 | uint8 | 0..255 |
+| synthetic-uint16.nrrd | 16 x 16 x 16 | uint16 | 0..65535 |
+| synthetic-uint32.nrrd | 16 x 16 x 16 | uint32 | 0..4294967295 |
 
-In this dataset:
+For each coordinate, encoded=x+16*y+256*z and the voxel is
+floor(encoded*dtype_max/4095). The generator uses uint64 intermediate
+arithmetic to avoid overflow and writes index_order="F".
+It produces manifest.json with shape, dtype, intensity extrema and SHA256 of
+the voxel bytes in C order. NRRD header timestamps can vary between runs;
+voxel data and manifest values are deterministic.
 
-- Axis 0 increases toward Posterior by approximately 1 mm.
-- Axis 1 increases toward Inferior by approximately 1 mm.
-- Axis 2 increases toward Right by approximately 1.3 mm.
+The accompanying numbered-coordinate CSV contains triangle, trapezoid,
+triangle planes, all valid and inside the volume. Automated tests reload all
+three files, check an independently calculated voxel, dtype extrema and
+manifest hashes, and run every generated plane through its projection.
 
-The origin specifies the physical position of the voxel at array index `(0, 0, 0)`.
+## Small analytic and video inputs
 
-### 2.3 Coordinate Convention
+- Coordinate-coded 10^3 volumes: x+10*y+100*z, allowing exact sampled-voxel
+  identification. Other small shapes use appropriately sized axis multipliers.
+- Constant volumes containing dtype maxima, zero or negative int16 values.
+- Seeded random 24^3 uint16 input and 48 random triangle/trapezoid planes.
+- Temporary 12^3 unsigned NRRDs for real MP4 integration: white/black/gray
+  slices in a known sequence, with several projection sizes on one canvas.
 
-The current implementation reads the NRRD using:
+These datasets are generated by tests and cleaned up automatically. They are
+not substitutes for testing on actual MRI data; the regenerated MRI video is
+a separate recorded experiment.
 
-```python
-volume, header = nrrd.read(
-    file_path,
-    index_order="F"
-)
-```
+## CSV fixture and ordering
 
-Projection points are expressed in **voxel-index coordinates**, not physical millimeters.
+Both supported CSV schemas and point ordering are specified in README.md.
+tests/fixtures/assignment-example.csv captures the
+[assignment's linked sheet](https://docs.google.com/spreadsheets/d/1Tfy1yMYhAJjRBA8ZpRp_07pZXqGtxWhWoP02yZW1FQE/edit).
+Its leading unnamed index is metadata. All four records parse. The second is
+the equal-base rectangle that older code incorrectly rejected. The third and
+fourth records do not meet the equal-leg requirement; projection validation
+rejects them. Supporting the sheet's schema does not assert that all example
+geometries satisfy the stated contract.
 
-The volume is accessed as:
+The MRI planes.csv stays in the original named-coordinate format to verify
+backward compatibility. Every populated valid CSV row generates one frame in
+list order; blank-type populated rows fail with a line number.
 
-```python
-volume[x, y, z]
-```
+## Performance input
 
-CSV plane coordinates must use the same voxel-index convention.
+The benchmark creates a 500^3 uint8 volume with default_rng(20261101), filled
+with random values 0..255. Voxel storage is 125,000,000 bytes (119.21 MiB).
+It measures eight geometries in both C and Fortran memory order, including
+the review's large in-volume trapezoid and larger diagonal slices.
+Coordinates and exact output sizes are saved in the benchmark JSON.
+See RESULTS.md for timings and environment details.
 
-The current application does not automatically convert physical LPS coordinates into array indices.
+## Storage and limitations
 
-## 3. Synthetic Correctness Datasets
+data/*.nrrd and data/generated/ are ignored. Existing unrelated local NRRD
+files are not required or modified by this repair. Commit source code,
+manifests/definitions when appropriate, benchmark measurements and the small
+demonstration videos, rather than generated volume binaries.
 
-### 3.1 Constant Volume
-
-A small constant volume is used to test basic output structure.
-
-Example:
-
-```python
-volume = np.full(
-    (10, 10, 10),
-    100,
-    dtype=np.int16
-)
-```
-
-Every valid sample must return 100.
-
-Points outside the volume return zero.
-
-This dataset was used to test both triangle and trapezoid projection.
-
-### 3.2 Coordinate-Encoded Volume
-
-A second synthetic dataset assigns different voxel values according to their coordinates:
-
-```python
-volume[x, y, z] = x + 10*y + 100*z
-```
-
-For example:
-
-```text
-M[2, 3, 1] = 132
-```
-
-This makes it possible to verify which voxel was sampled.
-
-The formula is intended for small volumes whose axis indices are below 10.
-
-The coordinate-based triangle test was executed successfully.
-
-## 4. Synthetic Performance Dataset
-
-A larger volume was generated for benchmarking.
-
-| Property | Value |
-|---|---|
-| Shape | 500 × 500 × 500 |
-| Data type | `uint8` |
-| Total voxels | 125,000,000 |
-| Value of every voxel | 100 |
-| Uncompressed voxel storage | Approximately 125 MB |
-
-The volume was generated directly in memory:
-
-```python
-volume = np.full(
-    (500, 500, 500),
-    100,
-    dtype=np.uint8
-)
-```
-
-This dataset was used for triangle and trapezoid performance measurements.
-
-The benchmarks measured projection runtime separately from file loading and video encoding.
-
-## 5. CSV Plane Definitions
-
-The demonstration uses a CSV file named `planes.csv`.
-
-Its columns are:
-
-```csv
-type,ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz
-```
-
-For a triangle, three vertices are supplied.
-
-For a trapezoid, four vertices are supplied in the order expected by `project_trapezoid`.
-
-The current CSV convention uses:
-
-- `triangle`: A, B, C
-- `trapezoid`: A1, A2, B, C
-
-Each CSV row defines one projection frame, and frames are generated in CSV order.
-
-This CSV layout is a project-level design choice.
-
-## 6. Dataset Validation
-
-The following checks were performed:
-
-| Validation | Result |
-|---|---|
-| Load MRI in 3D Slicer | Passed |
-| Read MRI with `pynrrd` | Passed |
-| Verify 3D dimensions | Passed |
-| Inspect MRI intensity range | Passed |
-| Read sample voxel `M[128,128,65]` | Value: 51 |
-| Run constant-volume triangle test | Passed |
-| Run coordinate-encoded triangle test | Passed |
-| Run constant-volume trapezoid test | Passed |
-| Generate MP4 from MRI and CSV | Passed |
-| Create and benchmark 500³ synthetic volume | Passed |
-
-## 7. Dataset Storage
-
-The MRI dataset is stored locally under:
-
-```text
-data/MRHead_1.nrrd
-```
-
-Large NRRD files are excluded from normal Git tracking through `.gitignore`.
-
-The synthetic datasets are generated programmatically, so separate large binary files do not need to be committed.
-
-The project repository should contain the source code, CSV examples, test scripts and documentation.
-
-## 8. Known Limitations
-
-- The MRI data uses anisotropic physical spacing: approximately 1 × 1 × 1.3 mm.
-- The current sampling algorithm operates in voxel-index coordinates.
-- Nearest-neighbor sampling can introduce visible aliasing.
-- The synthetic correctness datasets do not reproduce all properties of medical images.
-- Benchmark results depend on the computer hardware and selected plane geometry.
-- Additional datasets with other voxel data types and coordinate orientations would improve test coverage.
-
-## 9. Summary
-
-The project uses a real MRI volume for demonstration, small synthetic volumes for correctness testing, and a large synthetic volume for performance evaluation.
-
-This combination allows the projection algorithm to be evaluated for both functional correctness and runtime efficiency.
+MRI data, synthetic formula data, random benchmark data and decoded H.264
+frames serve different verification purposes. Lossy encoded frames cannot
+prove exact unsigned intensity preservation; that is asserted on projection
+matrices before display conversion. Physical-coordinate resampling and
+medical interpretation are outside scope.

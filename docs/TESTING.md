@@ -46,7 +46,24 @@ volume or a single last-row assertion from hiding coordinate errors.
 - Missing/unsupported NRRD inputs, uint32 normalization precision, constant
   zero input, signed display ranges and centering validation.
 
-Current result after the CSV/video change: 29 tests passed, including the real
-codec tests. No FFmpeg integration test is silently skipped.
+## Acceleration verification
+
+The full suite requires the installed Numba accelerator to be active and have
+compiled a native signature. It also explicitly forces the NumPy fallback and
+tests nonnative-endian data without loss. Twenty-four seeded random planes of
+each shape compare complete images against the scalar reference, including
+samples outside the volume.
+
+No FFmpeg integration test is silently skipped.
+
+## Reproducible datasets
+
+Generate/reload all three unsigned NRRDs, validate extrema and voxel hashes,
+and verify every generated plane. Check downloader hash mismatch and existing
+file protection without network access. The actual canonical Slicer download
+was separately verified against the original MRI's full voxel array.
+
+Recorded acceptance result: 35 tests passed, including real codec integration,
+both sampling backends and 48 seeded random full-matrix comparisons.
 Performance measurements belong in RESULTS.md and are separate from
 correctness tests; FPS is not a hardware-independent unit-test assertion.

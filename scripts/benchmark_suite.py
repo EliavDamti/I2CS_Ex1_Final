@@ -49,7 +49,8 @@ def run(repetitions=40, warmups=3, trials=3, module=projection, shape=None):
     volume = np.random.default_rng(20261101).integers(0, 256, (500, 500, 500), dtype=np.uint8)
     report = {
         "recorded_at_utc": datetime.now(timezone.utc).isoformat(),
-        "projection_sha256": hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest(),
+        "projection_sha256": hashlib.sha256(Path(module.__file__).read_text(encoding="utf-8-sig").encode("utf-8")).hexdigest(),
+        "source_hash_line_endings": "LF",
         "environment": {"platform": platform.platform(), "processor": platform.processor(),
                         "machine": platform.machine(), "python": platform.python_version(),
                         "numpy": np.__version__, "backend": getattr(module, "BACKEND", "legacy numpy"),

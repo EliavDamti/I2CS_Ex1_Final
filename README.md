@@ -16,6 +16,11 @@ Use Python 3.10 or later:
 python -m pip install -r requirements.txt
 ```
 
+Numba compiles the sampling loop on its first use for each dtype/layout.
+Allow for that startup cost; subsequent projections reuse the compiled code.
+Install all requirements to use the measured performance path. A portable
+NumPy fallback preserves correctness when Numba is unavailable.
+
 Windows virtual environment:
 
 ```powershell
@@ -37,6 +42,17 @@ python Ex0.py data/MRHead_1.nrrd planes.csv results/demo.mp4
 
 [View the MRI demonstration](results/demo.mp4).
 The playback rate is 2 FPS; projection throughput is measured separately.
+
+For a verified public MRI download or a reproducible synthetic demo:
+
+```bash
+python -m scripts.download_mri
+python -m scripts.generate_datasets
+python Ex0.py data/generated/synthetic-uint32.nrrd data/generated/planes.csv results/synthetic-uint32.mp4
+```
+
+The downloader saves data/MRHead-canonical.nrrd, verifies Slicer's SHA256
+and refuses to replace an existing file. The generator requires no network.
 
 ## Input contract
 
@@ -110,6 +126,7 @@ NRRD->CSV->MP4 encoding/decoding. See [TESTING.md](docs/TESTING.md).
 ## Performance
 
 ```bash
+python -m scripts.benchmark_suite --json results/benchmark-current.json
 python -m scripts.benchmark
 python -m scripts.benchmark_trapezoid
 ```
@@ -119,6 +136,10 @@ excluding NRRD loading and video encoding. Output size and orientation affect
 throughput. See [RESULTS.md](docs/RESULTS.md) for reproducible measurements;
 a fast small plane alone does not establish the over-30-FPS requirement for
 larger planes.
+
+The suite covers eight geometries in both C and Fortran memory order on a
+seeded random 500^3 uint8 volume. It records three warmups and three trials
+of forty timed projections, plus environment details and individual timings.
 
 ## Layout and documents
 

@@ -58,3 +58,22 @@ Baseline: a6ebdf6, which already fixed the EPS/equal-base issues from the
 - Record a separately timed unit-step baseline from a9bb5ce to distinguish
   acceleration from the earlier change in sampling semantics.
 - Update README, algorithm complexity, test coverage and experiment results.
+
+## 2026-11-01 — reproducible data and refreshed demonstrations
+
+- Add a deterministic unsigned NRRD generator covering the full uint8,
+  uint16 and uint32 ranges, with valid three-plane CSV and voxel-hash manifest.
+  Use uint64 intermediate arithmetic, F-order NRRD indexing and ignored output.
+- Add a downloader for Slicer's checksum-addressed canonical MRHead dataset.
+  Verify SHA256 before writing and refuse existing destinations.
+- Download the canonical sample once and compare it to the original local MRI:
+  voxel arrays match exactly; record both file hashes and their shared voxel
+  hash, shape, dtype, intensity range and spatial metadata.
+- Replace the outdated dataset document with direct provenance, exact
+  generation/download commands, formulas, test datasets and benchmark inputs.
+- Add generator round-trip/hash tests and offline downloader failure tests.
+- Regenerate the MRI demo using the corrected sampler and decode its three
+  ordered H.264 frames. Add and decode a generated uint32 demonstration.
+- Update all requirements, dataset, testing and README links/commands.
+  Final acceptance: 35 tests pass. No legacy result video is claimed to be
+  pixel-identical after intentionally changing the sampling algorithm.

@@ -7,6 +7,7 @@ data/*.nrrd
 data/*.nhdr
 data/*.raw
 data/*.raw.gz
+data/generated/
 
 # Generated images and videos
 *.mp4
