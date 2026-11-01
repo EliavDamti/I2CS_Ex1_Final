@@ -20,3 +20,23 @@ Baseline: a6ebdf6, which already fixed the EPS/equal-base issues from the
 - Rewrote SRS/ALGORITHM/TESTING to document the current numerical contract.
   README commands and the CSV/video documents are updated with the pipeline
   change that follows.
+
+## 2026-11-01 — assignment CSV and complete video pipeline
+
+- Added automatic support for numbered coordinates and the assignment's
+  Number of Points (3 or 4) header, preserving named-point CSV compatibility.
+- Added a captured assignment fixture with source attribution in README.
+  Its invalid geometric records remain invalid rather than being rewritten.
+- Reject populated blank-type records, unknown counts, duplicate/ambiguous
+  headers, extra fields and missing/nonfinite/nonnumeric coordinates.
+  Report the physical CSV line; skip only completely empty records.
+- Factored create_video into a callable pipeline. Validate all projections
+  before encoding; write to a temporary MP4 and replace the output only after
+  successful encoding. Remove temporary files after an encoder failure.
+- Use float64 for display normalization so uint32 values just below maximum
+  are not rounded prematurely. Retain source dtypes in projection matrices.
+- Added clear CLI errors, output-extension/input-path protection and a frame
+  size guard. Preserve global normalization, RGB centering and 2 FPS playback.
+- Replaced incorrect README module commands and stale geometric restrictions.
+  Updated the test strategy. Validation: all 29 tests pass, including real
+  NRRD and FFmpeg round trips for all unsigned assignment dtypes.

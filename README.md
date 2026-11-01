@@ -1,80 +1,77 @@
-﻿# 3D Volume Plane Projection – I2SE Ex1
+# I2SE Ex1 — 3D volume plane projection
 
-A Python implementation of a 3D medical volume projection algorithm, developed for the Introduction to Software Engineering (OOP/OOD) course.
+Extract isosceles triangle and trapezoid slices from a 3D NRRD volume and
+encode one MP4 frame per CSV record, in order.
 
-The application extracts 2D projections from NRRD volumes using triangular and trapezoidal regions, then combines them into an MP4 video.
+The implementation follows the assignment's normalized **unit-distance**
+scanline steps. Projection matrices preserve source integer intensities.
+Nearest-neighbor voxel sampling uses floor(p+0.5); positions outside the
+continuous volume bounds return zero.
 
-Both projection algorithms use fully vectorized NumPy operations for efficient computation.
+## Setup
 
-## Features
-
-- Read 3D medical imaging volumes in NRRD format.
-- Generate 2D projections of isosceles triangles and trapezoids.
-- Support arbitrary valid orientations in 3D voxel-index space.
-- Perform nearest-neighbor voxel sampling.
-- Assign zero to samples outside the volume.
-- Read projection definitions from CSV.
-- Produce an MP4 video with one frame per CSV row.
-- Validate geometric inputs.
-- Benchmark projection throughput on synthetic 3D data.
-
-## Requirements
-
-- Python 3
-- NumPy
-- pynrrd
-- Pillow (used by the standalone MRI PNG demonstration)
-- imageio
-- imageio-ffmpeg
-
-Install the dependencies using:
+Use Python 3.10 or later:
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-A virtual environment is recommended.
-
-On Windows:
+Windows virtual environment:
 
 ```powershell
 py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-## Quick Start
+Run the following commands from the repository root. On Windows, substitute
+.\.venv\Scripts\python.exe for python when using that environment.
 
-### 1. Obtain the MRI Dataset
+## Run the demonstration
 
-Download the NRRD sample dataset referenced in the assignment.
+Place MRHead_1.nrrd in data/; provenance, download links and checksums are in
+[DATASET.md](docs/DATASET.md).
 
-The implementation was tested using `MRHead_1.nrrd`, with dimensions `256 × 256 × 130`.
-
-Place the file at:
-
-```text
-data/MRHead_1.nrrd
+```bash
+python Ex0.py data/MRHead_1.nrrd planes.csv results/demo.mp4
 ```
 
-The MRI file is not included in the Git repository.
+[View the MRI demonstration](results/demo.mp4).
+The playback rate is 2 FPS; projection throughput is measured separately.
 
-Additional dataset information is available in [DATASET.md](docs/DATASET.md).
+## Input contract
 
-### 2. Prepare the CSV
+- Volume: three axes, each size 1..1023; uint8, uint16 or uint32.
+  Signed int16 is also supported for the MRHead sample.
+- Coordinates: finite voxel indices M[x,y,z], independent of NRRD physical
+  origin/directions. The reader uses index_order="F".
+- Triangle: vertices (a,b,c), nonzero area, abs(dist(a,b)-dist(a,c)) < 0.001.
+- Trapezoid: (a1,a2,b,c), equal legs within the same strict absolute tolerance,
+  nonzero area, coplanar points and parallel bases with matching direction.
+  dist(a1,a2) <= dist(b,c); equal bases and rectangles are valid.
+- Returned arrays use E[row,column]. They retain the input dtype.
+- Invalid files, populated CSV records and geometry fail explicitly.
+  CLI errors exit with status 2 and do not replace an existing output video.
 
-The repository includes an example file named `planes.csv`.
+The triangle's integer y<Dab loop may step beyond a noninteger leg, as in the
+assignment. For trapezoids, the documented extension starts at the upper base
+and takes whole unit steps while distance <= left-leg length. Sampling,
+centering, padding and numerical tolerances are defined in
+[ALGORITHM.md](docs/ALGORITHM.md).
 
-Its header is:
+## CSV formats
+
+Both schemas are accepted automatically. An optional index/metadata column
+is ignored. Headers tolerate surrounding spaces and a UTF-8 BOM.
+
+Assignment example schema:
 
 ```csv
-type,ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz
+Number of Points (3 or 4),x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4
+3,128,70,25,128,170,25,128,70,125,,,
+4,128,80,40,128,120,40,128,60,100,128,140,100
 ```
 
-A triangle uses three points: `a`, `b`, `c`.
-
-A trapezoid uses four points in the order `a1`, `a2`, `b`, `c`. In the CSV, these correspond to the `a`, `b`, `c`, `d` fields, respectively.
-
-Example:
+Original repository schema, retained for compatibility:
 
 ```csv
 type,ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz
@@ -82,132 +79,64 @@ triangle,128,70,25,128,170,25,128,70,125,,,
 trapezoid,128,80,40,128,120,40,128,60,100,128,140,100
 ```
 
-All coordinates are expressed in **voxel-index coordinates**, not physical MRI coordinates in millimeters.
+For three points the columns represent (a,b,c); for four they represent
+(a1,a2,b,c). A triangle-only file may omit the fourth point's columns.
+Every populated row requires a valid type/count and all used coordinates.
+Completely empty rows are ignored; malformed rows report their CSV line.
 
-Each CSV row generates one projection frame.
+The [linked assignment sheet](https://docs.google.com/spreadsheets/d/1Tfy1yMYhAJjRBA8ZpRp_07pZXqGtxWhWoP02yZW1FQE/edit)
+is captured in tests/fixtures/assignment-example.csv. Its header and all four
+records parse, including its rectangle. Its third and fourth records have
+unequal legs and are rejected during geometry validation; format compatibility
+does not bypass the assignment's mathematical input requirements.
 
-### 3. Generate the MP4
-
-Run:
-
-```bash
-python Ex0.py data/MRHead_1.nrrd planes.csv output.mp4
-```
-
-Or using the Windows virtual environment:
-
-```powershell
-.\.venv\Scripts\python.exe Ex0.py .\data\MRHead_1.nrrd planes.csv output.mp4
-```
-
-The application reads the volume, computes projections in CSV order, normalizes their intensities for grayscale display, and encodes an MP4.
-
-The example video is encoded at 2 FPS for playback. This is separate from the computational performance measurements.
-
-## Demo Video
-
-The following video demonstrates the projection algorithm
-using the MRHead MRI dataset.
-
-The video contains three projections:
-1. Triangle
-2. Trapezoid
-3. Triangle
-
-[Watch the demonstration](results/demo.mp4)
-
-## Project Structure
-
-
-| File | Description |
-|---|---|
-| `Ex0.py` | Main application and MP4 generation |
-| `projection.py` | Triangle and trapezoid projection algorithms |
-| `planes.csv` | Example plane definitions |
-| `requirements.txt` | Python dependencies |
-| `docs/SRS.md` | Software requirements specification |
-| `docs/ALGORITHM.md` | Mathematical and algorithm documentation |
-| `docs/DATASET.md` | Dataset documentation |
-| `docs/TESTING.md` | Testing strategy |
-| `docs/RESULTS.md` | Benchmark results and experiments |
-| `tests/test_projection.py` | Basic triangle tests |
-| `tests/test_coordinates.py` | Coordinate sampling tests |
-| `tests/test_trapezoid.py` | Trapezoid tests |
-| `tests/test_edge_cases.py` | Boundary and invalid-input tests |
-| `scripts/benchmark.py` | Triangle performance benchmark |
-| `scripts/benchmark_trapezoid.py` | Trapezoid performance benchmark |
-| `scripts/demo_mri.py` | MRI image demonstration |
-| `scripts/inspect_nrrd.py` | NRRD metadata inspection |
-
-
-## Algorithm
-
-The algorithm uses a scanline-based method:
-
-1. Validate the input shape and its geometry.
-2. Interpolate the endpoints of the scanlines along the region's sides.
-3. Calculate sampling positions across each scanline.
-4. Retrieve voxel intensities using nearest-neighbor sampling.
-5. Center the sampled values in a rectangular 2D output matrix.
-
-The triangle and trapezoid implementations use full NumPy vectorization to process all active sampling points without nested Python sampling loops.
-
-For mathematical derivations, implementation decisions, complexity analysis and limitations, see [ALGORITHM.md](docs/ALGORITHM.md).
-
-## Testing
-
-Run the functional tests:
+## Tests
 
 ```bash
-python -m tests.test_projection.py
-python -m tests.test_coordinates.py
-python -m tests.test_trapezoid.py
-python -m tests.test_edge_cases.py
+python -m unittest discover -s tests -v
 ```
 
-The tests verify basic output geometry, selected voxel values, boundary behavior, and invalid triangle inputs.
+An individual module can also run as:
 
-For the detailed testing plan, see [TESTING.md](docs/TESTING.md).
+```bash
+python -m tests.test_coordinates
+```
+
+Tests include complete image comparisons against an independent scalar
+reference, hand-computed unit-step regressions, EPS boundaries, invalid
+trapezoids, tilted planes, all unsigned dtypes, both CSV schemas and real
+NRRD->CSV->MP4 encoding/decoding. See [TESTING.md](docs/TESTING.md).
 
 ## Performance
-
-Benchmarks were performed using a synthetic `500 × 500 × 500` uint8 volume, with one warm-up projection and 20 timed projections per test.
-
-| Algorithm | Original Python | Fully Vectorized NumPy |
-|---|---:|---:|
-| Triangle | 4.23 FPS | **152.92 FPS** |
-| Trapezoid | 3.50 FPS | **142.59 FPS** |
-
-Both final implementations exceeded 100 FPS in the measured benchmark scenarios.
-
-The performance figures measure projection computation only, excluding file loading and MP4 encoding. The triangle and trapezoid tests used different projection geometries.
-
-Reproduce the benchmarks using:
 
 ```bash
 python -m scripts.benchmark
 python -m scripts.benchmark_trapezoid
 ```
 
-For full experimental results, see [RESULTS.md](docs/RESULTS.md).
+These measure computation including geometry validation and allocation,
+excluding NRRD loading and video encoding. Output size and orientation affect
+throughput. See [RESULTS.md](docs/RESULTS.md) for reproducible measurements;
+a fast small plane alone does not establish the over-30-FPS requirement for
+larger planes.
 
-## Documentation
+## Layout and documents
 
-- [SRS.md](docs/SRS.md) – Software requirements specification
-- [ALGORITHM.md](docs/ALGORITHM.md) – Mathematical and implementation design
-- [DATASET.md](docs/DATASET.md) – MRI and synthetic datasets
-- [TESTING.md](docs/TESTING.md) – Testing strategy
-- [RESULTS.md](docs/RESULTS.md) – Benchmarks and experiment results
+| Path | Purpose |
+|---|---|
+| projection.py | Geometry validation and unit-distance projection |
+| Ex0.py | CSV parsing, normalization and atomic MP4 creation |
+| planes.csv | Three MRI demonstration planes |
+| tests/ | Discoverable unit tests, scalar reference and CSV fixture |
+| scripts/ | Benchmark, MRI PNG and metadata tools |
+| docs/SRS.md | Requirements and acceptance criteria |
+| docs/ALGORITHM.md | Numerical contract, pseudocode and complexity |
+| docs/DATASET.md | Dataset definition and provenance |
+| docs/TESTING.md | Verification strategy and coverage |
+| docs/RESULTS.md | Measured experiments and limitations |
+| docs/CHANGELOG.md | Detailed changes since the reviewed baseline |
 
-## Known Limitations
-
-- Nearest-neighbor sampling may introduce aliasing and repeated voxel values.
-- Plane coordinates must be provided in voxel-index space.
-- The current trapezoid validation excludes parallelograms.
-- Very large projections may require substantial temporary memory because of full vectorization.
-- Benchmarked throughput depends on hardware and the selected plane geometry.
-- The CSV format is a project-defined convention and is not automatically compatible with other formats.
-
-## Summary
-
-This project demonstrates the complete workflow of loading a medical volume, computing geometric 2D projections, validating results, optimizing performance through NumPy vectorization, and exporting the resulting frames to MP4.
+The application keeps all computed projections in memory before encoding.
+Nearest-neighbor sampling can alias. Physical-coordinate conversion and GPU
+execution are outside scope. Large coordinate magnitudes can produce large
+canvases even for small input volumes.
