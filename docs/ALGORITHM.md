@@ -64,6 +64,12 @@ implementation, which always included both bases using ceil(L)+1 rows.
 
 ## Rasterization, centering and zero background
 
+Before floor/ceil of distances or centering offsets, values within eight
+float64 ULPs of an integer are snapped to that integer. This prevents a
+rotated length-4 edge from losing its last sample because a norm evaluates
+to 3.9999999999999996. This numerical roundoff rule is independent of the
+strict 0.001 leg tolerance; an actual fraction such as 4+1e-10 is preserved.
+
 The assignment's geometric row offset is floor((B-d)/2). Samples occupy
 offset+j, without replacing geometric centering with pixel-count centering.
 The nominal canvas width is ceil(B)+1. A final overshooting triangle row can
@@ -90,7 +96,11 @@ out-of-volume samples remain zero, including with signed int16 input.
 
 Geometry and row metadata are calculated with NumPy. The sampling loop is
 compiled with Numba njit(cache=True), without fastmath or parallel threads.
-It visits only the requested samples and copies each valid voxel directly to
+It compares volume-stride address displacements along a row and between
+scanlines, then traverses rows or local sample columns for locality. In column
+order, local sample j stays fixed across rows; centering does not alter the
+sampling coordinates. Ragged-column traversal may also check inactive slots.
+It copies each valid requested voxel directly to
 the output. No H*W*3 coordinate tensor or full-canvas index grids are needed.
 Numba caches compiled machine code; no geometry, volume or projection result
 is cached. Every call validates the input and allocates/recomputes its output.

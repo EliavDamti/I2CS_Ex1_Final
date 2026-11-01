@@ -170,3 +170,32 @@ not a guarantee for all possible geometries or machines.
 The first pip invocation encountered a console UnicodeEncodeError; rerunning
 with Python UTF-8 mode and disabled pip progress completed installation.
 README includes the corresponding command.
+
+## Layout-aware follow-up after direct PDF review
+
+The stride-selected traversal and eight-ULP integer-boundary rule are measured
+with the same sixteen-case methodology. Raw measurements and the new source
+hash are in [benchmark-layout-aware.json](../results/benchmark-layout-aware.json).
+Earlier source-hashed runs remain historical.
+
+| Case | Layout | Mean FPS | Slowest trial FPS |
+|---|---|---:|---:|
+| small_triangle | C | 1782.12 | 1639.12 |
+| small_trapezoid | C | 1456.83 | 1203.72 |
+| assignment_triangle | C | 550.98 | 511.86 |
+| assignment_rectangle | C | 325.82 | 313.55 |
+| review_large_trapezoid | C | 333.45 | 309.75 |
+| diagonal_triangle | C | 101.35 | 97.72 |
+| diagonal_rectangle | C | 198.69 | 190.09 |
+| tilted_trapezoid | C | 132.48 | 124.74 |
+| small_triangle | F | 1411.07 | 1333.93 |
+| small_trapezoid | F | 1377.29 | 1319.62 |
+| assignment_triangle | F | 639.23 | 554.87 |
+| assignment_rectangle | F | 124.21 | 114.07 |
+| review_large_trapezoid | F | 145.82 | 136.75 |
+| diagonal_triangle | F | 95.14 | 94.12 |
+| diagonal_rectangle | F | 109.88 | 107.65 |
+| tilted_trapezoid | F | 160.64 | 158.01 |
+
+Lowest mean: 95.14 FPS. Every trial exceeded 30 FPS;
+100 FPS remains a target rather than a claim for every case.

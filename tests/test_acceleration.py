@@ -31,6 +31,22 @@ class AccelerationTests(unittest.TestCase):
         self.assertEqual(actual.dtype, volume.dtype)
         np.testing.assert_array_equal(actual, reference(volume, points))
 
+    def test_fortran_traversal_on_tilted_and_exterior_planes(self):
+        rng = np.random.default_rng(42)
+        volume = np.asfortranarray(rng.integers(0, 2**32, (24, 24, 24), dtype=np.uint32))
+        for case in range(12):
+            basis, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+            u, v = basis[:, 0], basis[:, 1]
+            center = rng.uniform(0, 24, size=3)
+            length = rng.uniform(.3, 16)
+            triangle = (center, center+length*u, center+length*v)
+            trapezoid = (center-2*u, center+2*u,
+                         center-5*u+length*v, center+5*u+length*v)
+            for function, points in ((projection.project_triangle, triangle),
+                                     (projection.project_trapezoid, trapezoid)):
+                with self.subTest(case=case, shape=function.__name__):
+                    np.testing.assert_array_equal(function(volume, *points), reference(volume, points))
+
 
 if __name__ == "__main__":
     unittest.main()

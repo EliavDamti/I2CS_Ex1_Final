@@ -68,5 +68,10 @@ both sampling backends and 48 seeded random full-matrix comparisons.
 The same 35 tests also passed from the original project folder with its own
 .venv (Python 3.12.10, NumPy 2.5.4, Numba 0.68.1); pip check reported no broken
 requirements. That environment's performance is recorded separately in RESULTS.
+
+After reviewing the attached PDF directly, the layout/stability extension adds
+24 random Fortran-order uint32 plane comparisons, a hand-specified complete
+rotated 4x5 rectangle, and a genuine 4+1e-10 leg that must keep its fifth row.
+This guards numerical integer boundaries separately from the assignment EPS.
 Performance measurements belong in RESULTS.md and are separate from
 correctness tests; FPS is not a hardware-independent unit-test assertion.

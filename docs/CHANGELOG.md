@@ -89,3 +89,16 @@ Baseline: a6ebdf6, which already fixed the EPS/equal-base issues from the
   initial Python 3.12.14/NumPy 2.3.5 experiment.
 - Document the UTF-8 pip invocation that resolves console encoding errors
   with the Hebrew Windows project path. No projection code changes here.
+
+## 2026-11-01 — direct PDF review, locality and numerical boundaries
+
+- Read and visually inspect all three pages of the supplied I2SE_Exe1.docx.pdf,
+  including its exact algorithm, Q&A and linked input formats.
+- Choose compiled-kernel row/local-column traversal from actual volume strides
+  and geometric displacements to improve expensive NRRD/Fortran-order cases.
+- Stabilize floor/ceil and centering within eight float64 ULPs of an integer.
+  Retain true fractional lengths and strict absolute leg EPS=0.001.
+- Extend the scalar reference independently with math.ulp and add 24 random
+  Fortran-order uint32 plane comparisons and two integer-boundary regressions.
+- Preserve the new benchmark separately as benchmark-layout-aware.json; its
+  source hash identifies this version, while earlier results stay historical.

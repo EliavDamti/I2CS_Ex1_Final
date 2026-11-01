@@ -64,6 +64,20 @@ class CoordinateTests(unittest.TestCase):
                 with self.subTest(case=case, shape=function.__name__):
                     np.testing.assert_array_equal(function(volume, *points), reference(volume, points))
 
+    def test_rotated_integer_rectangle_has_no_missing_edge_samples(self):
+        volume = np.full((24, 24, 24), 123, dtype=np.uint8)
+        origin = np.array([6.13, 6.17, 6.19])
+        u = np.array([1., 1., 0.]) / np.sqrt(2)
+        v = np.array([-1., 1., 2.]) / np.sqrt(6)
+        points = (origin, origin+4*u, origin+3*v, origin+4*u+3*v)
+        actual = project_trapezoid(volume, *points)
+        np.testing.assert_array_equal(actual, np.full((4, 5), 123, dtype=np.uint8))
+
+    def test_real_noninteger_leg_is_not_snapped_away(self):
+        length = 4 + 1e-10
+        actual = project_triangle(self.volume, (2, 2, 2), (2, 2+length, 2), (2, 2, 2+length))
+        self.assertEqual(actual.shape[0], 5)
+
 
 if __name__ == "__main__":
     unittest.main()

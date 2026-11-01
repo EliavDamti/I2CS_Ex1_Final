@@ -12,11 +12,17 @@ GEOMETRY_EPS = 0.001
 BACKEND = "numba" if njit is not None else "numpy"
 
 
-def _fill_scanlines(volume, result, starts, directions, counts, offsets):
+def _fill_scanlines(volume, result, starts, directions, counts, offsets, column_major=False):
     """Streaming scalar kernel, compiled without fast-math reassociation."""
     sx, sy, sz = volume.shape
-    for row in range(len(starts)):
-        for j in range(counts[row]):
+    outer_count = int(counts.max()) if column_major else len(starts)
+    for outer in range(outer_count):
+        inner_count = len(starts) if column_major else counts[outer]
+        for inner in range(inner_count):
+            row = inner if column_major else outer
+            j = outer if column_major else inner
+            if j < 0 or j >= counts[row]:
+                continue
             x = starts[row, 0] + j * directions[row, 0]
             y = starts[row, 1] + j * directions[row, 1]
             z = starts[row, 2] + j * directions[row, 2]
@@ -26,6 +32,14 @@ def _fill_scanlines(volume, result, starts, directions, counts, offsets):
 
 
 _fill_scanlines_compiled = njit(cache=True)(_fill_scanlines) if njit is not None else None
+
+
+def _snap_integer(values):
+    """Remove norm/centering roundoff within eight float64 ULPs of an integer."""
+    values = np.asarray(values)
+    nearest = np.rint(values)
+    tolerance = 8 * np.spacing(np.maximum(1.0, np.abs(values)))
+    return np.where(np.abs(values - nearest) <= tolerance, nearest, values)
 
 
 def validate_volume(volume):
@@ -64,17 +78,25 @@ def _scanlines(volume, starts, ends, base_length):
     """Sample integer unit distances, preserving geometric row centering."""
     differences = ends - starts
     lengths = np.linalg.norm(differences, axis=1)
-    counts = np.floor(lengths).astype(np.intp) + 1
-    offsets = np.floor((base_length - lengths) / 2).astype(np.intp)
+    counts = np.floor(_snap_integer(lengths)).astype(np.intp) + 1
+    offsets = np.floor(_snap_integer((base_length - lengths) / 2)).astype(np.intp)
     # The y < Dab loop can extend the last row past a noninteger leg.
     # Add background columns if needed; never clip a requested sample.
     offsets -= min(0, int(offsets.min()))
-    width = max(int(np.ceil(base_length)) + 1, int(np.max(offsets + counts)))
+    width = max(int(np.ceil(_snap_integer(base_length))) + 1, int(np.max(offsets + counts)))
     result = np.zeros((len(starts), width), dtype=volume.dtype)
     directions = np.divide(differences, lengths[:, None],
                            out=np.zeros_like(differences), where=lengths[:, None] != 0)
     if _fill_scanlines_compiled is not None and volume.dtype.isnative:
-        _fill_scanlines_compiled(volume, result, starts, directions, counts, offsets)
+        # Compare address displacements in the two traversal directions.
+        # Local sample j stays constant across rows, independent of padding.
+        strides = np.asarray(volume.strides)
+        column_major = len(starts) > 1 and (
+            abs(np.dot(starts[1] - starts[0], strides))
+            < abs(np.dot(directions[-1], strides))
+        )
+        _fill_scanlines_compiled(volume, result, starts, directions, counts, offsets,
+                                 column_major)
         return result
     return _fill_scanlines_numpy(volume, result, starts, directions, counts, offsets)
 
@@ -128,7 +150,7 @@ def project_triangle(volume, a, b, c):
         raise ValueError("Triangle must be isosceles: leg difference < 0.001")
     if np.linalg.norm(np.cross(ab / dab, ac / dac)) <= 1e-10:
         raise ValueError("Triangle vertices are collinear")
-    steps = np.arange(1, int(np.ceil(dab)) + 1)[:, None]
+    steps = np.arange(1, int(np.ceil(_snap_integer(dab))) + 1)[:, None]
     return _scanlines(volume, a + steps * (ab / dab),
                       a + steps * (ac / dac), dbc)
 
@@ -153,6 +175,6 @@ def project_trapezoid(volume, a1, a2, b, c):
         raise ValueError("Degenerate trapezoid area")
     if abs(np.dot(c - a1, normal / normal_length)) > 1e-6 * max(tl, bl, ll):
         raise ValueError("Trapezoid vertices must be coplanar")
-    steps = np.arange(int(np.floor(ll)) + 1)[:, None]
+    steps = np.arange(int(np.floor(_snap_integer(ll))) + 1)[:, None]
     return _scanlines(volume, a1 + steps * (left / ll),
                       a2 + steps * (right / rl), bl)
