@@ -4,6 +4,24 @@ from projection import project_triangle, project_trapezoid
 
 
 class AssignmentGeometryTests(unittest.TestCase):
+    def test_rotated_equal_bases_from_biscuit_csv(self):
+        # These bases differ by one ULP after parsing rounded CSV coordinates.
+        points = ((84.59417127, -44.49601041, 97.49942825),
+                  (-42.90582873, 176.34046756, 97.49942825),
+                  (297.90582873, 78.65953244, 31.50057175),
+                  (170.40582873, 299.49601041, 31.50057175))
+        volume = np.ones((1, 1, 1), dtype=np.uint8)
+        result = project_trapezoid(volume, *points)
+        self.assertTrue(result.size)
+
+    def test_genuinely_longer_first_base_still_rejected(self):
+        # Much smaller than leg EPS, but well above floating-point roundoff.
+        points = ((2, 3-5e-11, 2), (2, 5+5e-11, 2),
+                  (2, 3, 4), (2, 5, 4))
+        volume = np.ones((10, 10, 10), dtype=np.uint8)
+        with self.assertRaisesRegex(ValueError, "First trapezoid base"):
+            project_trapezoid(volume, *points)
+
     def test_triangle_absolute_epsilon_at_different_scales(self):
         volume = np.ones((10, 10, 10), dtype=np.uint8)
         for length in (1., 4., 100.):

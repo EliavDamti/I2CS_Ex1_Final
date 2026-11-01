@@ -258,3 +258,22 @@ All sixteen mean rates exceed the expected 100 FPS target; the lowest is
 the mandatory 30 FPS minimum. This is a measured warm result for these cases,
 not a guarantee for unmeasured planes or hardware. The earlier source-hashed
 results are retained to show the progression and environment variation.
+
+## Biscuit input: rotated equal-base validation regression
+
+The user's 120-record biscuit_cake.csv exposed a strict floating comparison:
+record 6 produced base norms 255.00000000430254 and 255.00000000430250.
+Their difference is one ULP; 34 records failed, with maximum discrepancy two
+ULPs. Base-order validation now treats up to eight ULPs as numerical equality.
+It does not apply the much larger leg EPS to ordering.
+
+All 120 records pass the corrected geometry checks. All 43 tests pass,
+including the exact reported coordinates and a real 1e-10 reversal that must
+still fail. Every one of the existing sixty MRI projection matrices was
+compared with the previous implementation and is exactly unchanged. Both
+existing videos then passed decode verification; only their manifest's source
+fingerprint needed updating. Existing timing reports were not retimed for
+this validation-only fix and retain their original source hashes.
+
+The user's CSV remains user-owned and untracked; the input data are not
+rewritten or silently reordered.

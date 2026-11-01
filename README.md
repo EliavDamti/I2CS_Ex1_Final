@@ -90,6 +90,8 @@ and refuses to replace an existing file. The generator requires no network.
 - Trapezoid: (a1,a2,b,c), equal legs within the same strict absolute tolerance,
   nonzero area, coplanar points and parallel bases with matching direction.
   dist(a1,a2) <= dist(b,c); equal bases and rectangles are valid.
+  Base ordering tolerates only float64 roundoff, avoiding false rejections
+  of rotated equal bases; a genuine longer first base still fails.
 - Returned arrays use E[row,column]. They retain the input dtype.
 - Invalid files, populated CSV records and geometry fail explicitly.
   CLI errors exit with status 2 and do not replace an existing output video.

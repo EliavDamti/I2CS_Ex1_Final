@@ -165,7 +165,10 @@ def project_trapezoid(volume, a1, a2, b, c):
         raise ValueError("Degenerate trapezoid")
     if abs(ll - rl) >= GEOMETRY_EPS:
         raise ValueError("Trapezoid leg difference must be < 0.001")
-    if tl > bl:
+    # Equal rotated bases can differ by a few ULPs after coordinate
+    # subtraction and norm evaluation. This is roundoff, not leg EPS.
+    base_roundoff = 8 * np.spacing(max(tl, bl))
+    if tl - bl > base_roundoff:
         raise ValueError("First trapezoid base must not exceed second base")
     if np.linalg.norm(np.cross(top / tl, bottom / bl)) > 1e-6 or np.dot(top / tl, bottom / bl) <= 0:
         raise ValueError("Trapezoid bases must be parallel and have the same direction")

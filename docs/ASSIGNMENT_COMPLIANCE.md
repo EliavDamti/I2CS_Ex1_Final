@@ -94,6 +94,12 @@ videos decoded and all raw CSV comparisons passed. The final sixteen-case
 benchmark is results/benchmark-submission-env.json: every mean exceeds
 100 FPS (lowest 104.42), with a slowest individual trial of 98.81 FPS.
 
+Subsequent biscuit-input regression coverage brings the suite to 43 tests.
+Equal-base ordering now tolerates eight float64 ULPs of norm roundoff, while
+real reversals and the strict leg EPS remain enforced. All 120 user records
+are accepted; all sixty previous MRI projections are unchanged. Stored timing
+reports remain tied to their original source hashes.
+
 Measured warm throughput is not a universal guarantee for all possible planes
 or machines. The first Numba signature compilation can take seconds.
 Earlier environments include cases near or below the expected 100 FPS target;

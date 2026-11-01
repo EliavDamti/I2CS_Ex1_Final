@@ -84,3 +84,9 @@ The final 41-case suite and full video verification were also rerun successfully
 inside the original project's .venv after the commits were applied.
 Performance measurements belong in RESULTS.md and are separate from
 correctness tests; FPS is not a hardware-independent unit-test assertion.
+
+The biscuit CSV exposed a separate base-order roundoff regression: equal
+rotated bases differed by one or two float64 ULPs. Two added cases accept the
+reported coordinates and reject a genuine 1e-10 base reversal. The suite now
+contains 43 tests. The user's complete 120-record input is also validated and
+encoded separately; the user-owned CSV is not added to the repository.

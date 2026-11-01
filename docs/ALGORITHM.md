@@ -22,6 +22,11 @@ is rejected using the computed float64 lengths.
 Trapezoid input is (a1,a2,b,c). The bases are a1->a2 and b->c, and the legs
 are a1->b and a2->c. The legs satisfy the same strict absolute tolerance.
 The first base must be no longer than the second, including equality.
+For that ordering comparison only, a difference up to eight ULPs at the
+larger base length is treated as numerical equality. Rotated equal bases
+serialized to CSV can otherwise differ by one or two ULPs after norm
+evaluation. A real reversal, even 1e-10, is still rejected; the 0.001 leg
+tolerance is not applied to base ordering.
 Rectangles and sheared equal-base parallelograms are accepted.
 
 All four edges must be nonzero. Bases must point in the same direction and

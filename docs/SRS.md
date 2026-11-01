@@ -36,6 +36,10 @@ CSV schema and error behavior are documented in README.md and DATASET.md.
 CSV coordinates refer to voxel indices, without applying the NRRD physical
 origin, directions or anisotropic spacing.
 
+Base-order validation treats differences within eight float64 ULPs of the
+larger base as numerical equality, preserving rotated equal-base inputs.
+This does not relax the strict 0.001 leg tolerance or accept genuine reversals.
+
 ASSIGNMENT_COMPLIANCE.md maps all eight deliverables from the supplied PDF to
 code, documents, tests and outputs. DEMO.md defines the sixty-plane experiment.
 The required Ex0 output still has one frame per CSV row; titles and held frames

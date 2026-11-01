@@ -133,3 +133,15 @@ Baseline: a6ebdf6, which already fixed the EPS/equal-base issues from the
   trial is 98.81 FPS. Keep compilation and file/codec time outside warm FPS.
 - Update README, RESULTS, TESTING and the PDF requirement mapping with the
   actual final evidence, without treating historical measurements as current.
+
+## 2026-11-01 — equal-base roundoff in the user's biscuit CSV
+
+- Reproduce plane 6: base lengths 255.00000000430254 and 255.00000000430250
+  differ by one float64 ULP; 34 of 120 records failed the strict comparison.
+- Treat up to eight ULPs at the larger base length as numerical equality
+  for base ordering only. Preserve genuine reversal rejection and leg EPS.
+- Add the reported rotated coordinates and a genuine 1e-10 reversal as
+  regression cases. Update the algorithm, requirements and test strategy.
+- Validate/encode the complete user-owned CSV without rewriting or committing
+  it. Refresh the demo's source fingerprint only after proving all sixty
+  prior projection matrices are unchanged by this validation-only fix.
