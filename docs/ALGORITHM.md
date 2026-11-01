@@ -86,18 +86,41 @@ out-of-volume samples remain zero, including with signed int16 input.
 6. Check continuous bounds; round valid points and copy M[x,y,z].
 7. Return the complete image. File I/O and video encoding are separate.
 
-## Complexity and verification
+## Acceleration, complexity and verification
 
-For H output rows, W canvas columns and S requested samples, the initial
-row-vectorized implementation takes O(H+S+H*W) time including zero allocation,
-O(H*W) output storage, and O(W) per-row temporary storage. It avoids a Python
-loop per voxel. No projection-result cache is used.
+Geometry and row metadata are calculated with NumPy. The sampling loop is
+compiled with Numba njit(cache=True), without fastmath or parallel threads.
+It visits only the requested samples and copies each valid voxel directly to
+the output. No H*W*3 coordinate tensor or full-canvas index grids are needed.
+Numba caches compiled machine code; no geometry, volume or projection result
+is cached. Every call validates the input and allocates/recomputes its output.
+
+For H rows, W canvas columns and S requested samples, time is O(H+S+H*W)
+including zero allocation; storage is O(H*W) for the output and O(H) for
+scanline metadata. Compilation is lazy per dtype/layout signature: first use
+can take seconds. Benchmarks explicitly warm signatures before timing and
+report first-call timings separately. All dependency installation is through
+requirements.txt; GPU hardware or a separately installed C compiler is not
+needed when supported Numba wheels are available.
+
+A NumPy fallback is used when Numba is absent or the source has nonnative byte
+order. It generates axis-wise coordinate/index grids in 32-row blocks, uses
+constant-axis specialization when possible and retains exactly the same
+continuous-bound and rounding policies. Its temporary storage is O(32*W+H)
+beyond the output. It is verified for correctness, but its throughput is not
+claimed to meet the large-plane performance requirement. The complete test
+suite checks that an installed accelerator actually compiles and runs.
+
+The Numba usage follows its
+[official JIT documentation](https://numba.readthedocs.io/en/stable/user/jit.html).
 
 The independent scalar reference in tests/reference.py uses math distances,
 scalar coordinate arithmetic and individual voxel reads. Tests compare every
 pixel across fractional and tilted planes, axis permutations, noncontiguous
-arrays and out-of-volume regions. Hand-computed regression rows verify the
-unit-step change separately.
+arrays and out-of-volume regions. Twenty-four seeded random orientations are
+also checked for each shape. Hand-computed regression rows verify the
+unit-step change separately. Backend tests exercise the NumPy fallback and
+nonnative byte order as well as the default compiled path.
 
 Nearest-neighbor aliasing, physical-coordinate conversion, interpolation,
 GPU execution and streaming an unbounded number of video frames are outside

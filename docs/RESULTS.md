@@ -1,256 +1,133 @@
-# Ex1 – Experiment and Results
+# Experiments and measured results
 
-## 1. Experiment Objective
+Revised 2026-11-01. These results supersede the earlier interpolation-based
+152.92/142.59 FPS claims, which used smaller planes and a different sampler.
+Raw timing files are versioned with this document.
 
-The objective of this experiment was to implement, validate, and optimize a 3D volume projection algorithm supporting isosceles triangular and trapezoidal regions.
+## Environment and method
 
-The implementation reads NRRD medical imaging data, extracts 2D projections according to plane definitions supplied in a CSV file, and generates an MP4 video.
+CPU: Intel(R) Core(TM) Ultra 7 255U; 14 logical CPUs. OS: Windows-11-10.0.26200-SP0.
+Python 3.12.14; NumPy 2.3.5; Numba 0.68.1; llvmlite 0.50.0;
+pynrrd 1.1.3; imageio 2.38.1; imageio-ffmpeg 0.6.0.
 
-The experiment also evaluates the performance improvements achieved by replacing Python sampling loops with NumPy vectorized operations.
+A seeded random 500 x 500 x 500 uint8 volume contains 125,000,000 bytes
+(119.21 MiB). Both C and Fortran memory order are measured. Each case includes
+an initial call, three warmups, then three trials of forty timed calls.
+FPS = 1000 / mean(milliseconds); the slowest trial is reported separately.
+Timing includes input validation, geometry, output allocation and all voxel
+sampling. It excludes imports/JIT warmup, file loading and MP4 encoding.
+No result/geometry cache or multithreaded kernel is used. First-call time is
+reported in the raw JSON; it can reuse an existing compiled-code cache.
 
-## 2. Datasets
-
-### 2.1 Real MRI Dataset
-
-The medical imaging dataset used for functional testing was `MRHead_1.nrrd`, referenced in the assignment.
-
-| Property | Value |
-|---|---|
-| Volume dimensions | 256 × 256 × 130 |
-| Total voxels | 8,519,680 |
-| Data type | int16 |
-| Minimum intensity | 0 |
-| Maximum intensity | 279 |
-| Encoding | gzip |
-
-The MRI volume was successfully loaded using `pynrrd` and visualized in 3D Slicer.
-
-### 2.2 Synthetic Performance Dataset
-
-For performance measurements, a synthetic volume was generated directly in memory.
-
-| Property | Value |
-|---|---|
-| Volume dimensions | 500 × 500 × 500 |
-| Total voxels | 125,000,000 |
-| Data type | uint8 |
-| Voxel intensity | 100 |
-| Approximate voxel storage | 125 MB |
-
-The constant intensity allowed the benchmark to focus on projection computation rather than image complexity.
-
-## 3. Benchmark Methodology
-
-Each benchmark consisted of:
-
-1. Creating the synthetic 3D volume.
-2. Executing one warm-up projection.
-3. Executing 20 timed projections.
-4. Measuring runtime with `time.perf_counter()`.
-5. Calculating average runtime and projection throughput in FPS.
-
-FPS was calculated as:
-
-$$
-FPS = \frac{1}{\text{Average Runtime in Seconds}}
-$$
-
-Timing included the projection function itself, including its geometric validation and output allocation.
-
-NRRD loading, CSV parsing, MP4 encoding, and video playback were excluded.
-
-The triangle and trapezoid benchmarks used different plane geometries, so their throughput values should not be interpreted as a direct comparison under identical workloads.
-
-## 4. Triangle Performance
-
-The triangle benchmark used the following vertices:
-
-```text
-a = (250, 180, 100)
-b = (250, 330, 100)
-c = (250, 180, 250)
-```
-
-The resulting projection dimensions were 150 × 214.
-
-### 4.1 Optimization Stages
-
-| Implementation | Average Runtime | Average FPS |
-|---|---:|---:|
-| Original Python loops | 236.14 ms | 4.23 |
-| NumPy vectorization per scanline | 12.23 ms | 81.78 |
-| Fully vectorized NumPy | **6.54 ms** | **152.92** |
-
-### 4.2 Final Triangle Benchmark
-
-| Metric | Result |
-|---|---:|
-| Average runtime | 6.54 ms |
-| Minimum runtime | 4.97 ms |
-| Maximum runtime | 10.94 ms |
-| Average FPS | 152.92 |
-| Above 30 FPS | Yes |
-| Above 100 FPS | Yes |
-
-The final triangle implementation achieved approximately **36.2× higher projection throughput** than the original implementation.
-
-## 5. Trapezoid Performance
-
-The trapezoid benchmark used the following vertices:
-
-```text
-a1 = (250, 200, 100)
-a2 = (250, 300, 100)
-b  = (250, 170, 250)
-c  = (250, 330, 250)
-```
-
-The resulting projection dimensions were 154 × 161.
-
-### 5.1 Optimization Stages
-
-| Implementation | Average Runtime | Average FPS |
-|---|---:|---:|
-| Original Python loops | 285.59 ms | 3.50 |
-| NumPy vectorization per scanline | 9.59 ms | 104.26 |
-| Fully vectorized NumPy | **7.01 ms** | **142.59** |
-
-### 5.2 Final Trapezoid Benchmark
-
-| Metric | Result |
-|---|---:|
-| Average runtime | 7.01 ms |
-| Minimum runtime | 5.89 ms |
-| Maximum runtime | 9.74 ms |
-| Average FPS | 142.59 |
-| Above 30 FPS | Yes |
-| Above 100 FPS | Yes |
-
-The final trapezoid implementation achieved approximately **40.7× higher projection throughput** than the original implementation.
-
-## 6. Optimization Approach
-
-The original implementation used nested Python loops to calculate sampling positions and retrieve individual voxel values.
-
-Two optimization stages were applied.
-
-### Stage 1 – Scanline Vectorization
-
-The inner Python loop was replaced with NumPy array operations that processed all sampling points of a scanline together.
-
-### Stage 2 – Full Vectorization
-
-The outer Python loop was also removed.
-
-The final implementation computes scanline endpoints, sampling positions, validity masks, and voxel indices through NumPy batch operations.
-
-This significantly reduces Python interpreter overhead while preserving the intended mathematical sampling procedure.
-
-Full vectorization increases temporary memory usage, but provided better runtime performance in the measured scenarios.
-
-## 7. Functional Test Results
-
-The following tests were executed successfully during development.
-
-| Test | Result |
-|---|---|
-| Constant-volume triangle projection | Passed |
-| Coordinate-encoded triangle projection | Passed |
-| Constant-volume trapezoid projection | Passed |
-| Out-of-bounds voxel sampling | Passed |
-| Valid boundary voxel sampling | Passed |
-| Degenerate triangle rejection | Passed |
-| Non-isosceles triangle rejection | Passed |
-| NRRD loading and metadata inspection | Passed |
-| CSV parsing | Passed |
-| MP4 generation | Passed |
-
-The application successfully generated an MP4 containing three projection frames in CSV order:
-
-1. Triangle
-2. Trapezoid
-3. Triangle
-
-The automated tests were confirmed during development. Final benchmark measurements were also completed for the fully vectorized versions.
-
-## 8. Integration Demonstration
-
-The application was executed using:
+Reproduce from the repository root:
 
 ```bash
-python Ex0.py data/MRHead_1.nrrd planes.csv output.mp4
+python -m scripts.benchmark_suite --json results/benchmark-current.json
 ```
 
-The application successfully:
+Triangle/trapezoid subsets remain available via python -m scripts.benchmark
+and python -m scripts.benchmark_trapezoid, with the same CLI options.
+Raw points, source SHA256, environment, individual timings and per-trial FPS
+are in [benchmark-current.json](../results/benchmark-current.json).
 
-- Loaded the NRRD volume.
-- Read three plane definitions from the CSV.
-- Generated triangle and trapezoid projections.
-- Converted the output matrices into video-compatible image frames.
-- Created an MP4 file.
+## Warm compiled-kernel results
 
-The MP4 uses a display frame rate of 2 FPS.
+| Case | Layout | Output rows x columns | Mean FPS | Slowest trial FPS | p95 ms |
+|---|---|---|---:|---:|---:|
+| small_triangle | C | 150 x 214 | 2821.94 | 2666.92 | 0.56 |
+| small_trapezoid | C | 153 x 161 | 2071.99 | 1934.73 | 0.69 |
+| assignment_triangle | C | 448 x 401 | 856.49 | 841.99 | 1.88 |
+| assignment_rectangle | C | 401 x 501 | 451.44 | 437.62 | 2.85 |
+| review_large_trapezoid | C | 521 x 500 | 487.09 | 386.51 | 3.39 |
+| diagonal_triangle | C | 706 x 707 | 99.27 | 99.09 | 12.58 |
+| diagonal_rectangle | C | 500 x 707 | 317.45 | 238.21 | 5.10 |
+| tilted_trapezoid | C | 418 x 401 | 148.61 | 137.75 | 9.52 |
+| small_triangle | F | 150 x 214 | 1590.06 | 1273.21 | 1.62 |
+| small_trapezoid | F | 153 x 161 | 1309.19 | 1165.93 | 1.40 |
+| assignment_triangle | F | 448 x 401 | 837.51 | 803.48 | 1.64 |
+| assignment_rectangle | F | 401 x 501 | 69.78 | 68.77 | 18.37 |
+| review_large_trapezoid | F | 521 x 500 | 103.65 | 93.22 | 13.21 |
+| diagonal_triangle | F | 706 x 707 | 63.07 | 60.79 | 19.64 |
+| diagonal_rectangle | F | 500 x 707 | 72.04 | 71.41 | 18.32 |
+| tilted_trapezoid | F | 418 x 401 | 201.97 | 192.26 | 7.15 |
 
-This display rate is independent of the projection throughput measured in the benchmarks.
+All 16 case/layout combinations exceeded 30 FPS in every trial.
+The lowest mean was 63.07 FPS; the slowest individual
+trial was 60.79 FPS. Some large cases remain below the
+expected 100 FPS target. This establishes the tested scenarios on this
+computer, not a guarantee for every plane, workload or other computer.
 
-Each CSV row produces one output frame.
+The assignment rectangle extends to coordinate 500 on one axis; outside
+samples are zero. The review trapezoid and the additional diagonal cases
+have their vertices within 0..499, so the large-plane measurements are not
+limited to mostly out-of-volume images. The review trapezoid points are:
+(250,149.5,0), (250,349.5,0), (250,0,499), (250,499,499).
 
-## 9. Known Limitations
+## Same-sampling baseline
 
-- Nearest-neighbor voxel sampling may cause aliasing and repeated pixel values.
-- Projection coordinates are specified in voxel-index space rather than physical MRI coordinates.
-- The current trapezoid validation excludes parallelograms.
-- Full vectorization requires additional temporary memory proportional to the output image dimensions.
-- Benchmark measurements were performed using specific geometries and a synthetic constant-value volume.
-- Performance may differ across hardware, volume layouts, projection sizes, and orientations.
-- File-loading and video-encoding times were excluded from the performance benchmark.
-- The available tests do not exhaustively cover every possible malformed input or geometric configuration.
+The row-vectorized unit-step implementation at a9bb5ce was measured separately
+with three warmups and one trial of twenty calls per case. Its sampler and
+geometry are the same as the compiled version; unlike a comparison to
+990b7be, this does not conflate acceleration with altered pixel values.
+The shorter baseline run is indicative, not a statistical speedup guarantee.
 
-## 10. Conclusion
+| Case | Layout | Unit-step NumPy baseline FPS | Compiled mean FPS |
+|---|---|---:|---:|
+| assignment_triangle | C | 29.66 | 856.49 |
+| review_large_trapezoid | C | 22.88 | 487.09 |
+| diagonal_triangle | C | 13.74 | 99.27 |
+| assignment_triangle | F | 37.15 | 837.51 |
+| review_large_trapezoid | F | 19.36 | 103.65 |
+| diagonal_triangle | F | 14.36 | 63.07 |
 
-The project successfully implemented triangular and trapezoidal projection algorithms for 3D medical imaging volumes.
+All sixteen baseline scenarios and timings are in
+[benchmark-unit-baseline.json](../results/benchmark-unit-baseline.json).
+The review's ~8 FPS measured a different version and environment; it is not
+presented as the baseline of this controlled comparison.
 
-Both algorithms were optimized using NumPy vectorization.
+## Cold start
 
-The final measured performance was:
+A separate process used a fresh empty Numba cache directory:
 
-| Algorithm | Average Runtime | Average FPS |
-|---|---:|---:|
-| Triangle | 6.54 ms | **152.92** |
-| Trapezoid | 7.01 ms | **142.59** |
+- Imports: 1383 ms.
+- First small triangle, including compilation: 1163 ms.
+- Second call: 1.41 ms.
 
-Both implementations exceeded the assignment's minimum 30 FPS requirement and the approximate 100 FPS performance target in the tested benchmark scenarios.
+See [startup.json](../results/startup.json). Compilation is paid for each new
+dtype/layout signature, can take seconds, and is not counted as warm FPS.
+The NumPy fallback remains available for portability and nonnative byte order;
+its large-plane speed is not claimed to meet the requirement.
 
-The experiment demonstrates that full NumPy vectorization can substantially improve projection performance without changing the underlying geometric sampling approach.
+## MRI demonstration
 
-## 11. Reproducing the Experiment
-
-Install dependencies:
+The MRI input is the existing MRHead_1.nrrd: 256 x 256 x 130, int16, values
+0..279. Its voxels were independently compared with the checksum-verified
+canonical Slicer download and are exactly equal; see DATASET.md for hashes.
 
 ```bash
-python -m pip install -r requirements.txt
+python Ex0.py data/MRHead_1.nrrd planes.csv results/demo.mp4
 ```
 
-Run functional tests:
+The regenerated [MRI video](../results/demo.mp4) decodes to exactly three
+H.264/yuv420p frames, 144 x 100 pixels, 2 FPS and 1.5 seconds. The CSV order
+is triangle, trapezoid, triangle. Pixel values intentionally differ from the
+old interpolated demo after restoring unit-distance sampling; the old video
+remains recoverable from Git history.
 
-```bash
-python test_projection.py
-python test_coordinates.py
-python test_trapezoid.py
-python test_edge_cases.py
-```
+A second [unsigned-32 synthetic video](../results/synthetic-uint32.mp4) is
+reproducible with the generator described in DATASET.md. It decodes to three
+14 x 8 frames at 2 FPS. Both examples were decoded after encoding, rather
+than accepted solely because the encoder process exited successfully.
 
-Run performance benchmarks:
+## Correctness evidence and limits
 
-```bash
-python benchmark.py
-python benchmark_trapezoid.py
-```
+The final acceptance count and commands are in TESTING.md. Complete matrices
+are compared to an independent scalar reference, including 48 seeded random
+planes. Real NRRD/MP4 round trips cover all three unsigned dtypes and known
+frame order; encoder failure preserves existing output.
 
-Generate the demonstration video:
-
-```bash
-python Ex0.py data/MRHead_1.nrrd planes.csv output.mp4
-```
-
-The MRI dataset must be obtained separately and placed in the `data` directory.
+The performance requirement is about projection computation, not video
+playback or end-to-end disk/codec throughput. Nearest-neighbor aliasing,
+first-call JIT cost, large-coordinate canvases and hardware variation remain
+explicit limitations. CPU utilization, peak RSS and all possible planes were
+not exhaustively measured. No performance test silently skips a failed case.

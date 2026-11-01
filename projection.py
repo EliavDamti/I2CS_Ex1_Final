@@ -1,8 +1,31 @@
 """Unit-distance scanline projections in voxel-index coordinates."""
 
+import math
 import numpy as np
 
+try:
+    from numba import njit
+except ImportError:
+    njit = None
+
 GEOMETRY_EPS = 0.001
+BACKEND = "numba" if njit is not None else "numpy"
+
+
+def _fill_scanlines(volume, result, starts, directions, counts, offsets):
+    """Streaming scalar kernel, compiled without fast-math reassociation."""
+    sx, sy, sz = volume.shape
+    for row in range(len(starts)):
+        for j in range(counts[row]):
+            x = starts[row, 0] + j * directions[row, 0]
+            y = starts[row, 1] + j * directions[row, 1]
+            z = starts[row, 2] + j * directions[row, 2]
+            if 0 <= x <= sx - 1 and 0 <= y <= sy - 1 and 0 <= z <= sz - 1:
+                result[row, offsets[row] + j] = volume[
+                    math.floor(x + 0.5), math.floor(y + 0.5), math.floor(z + 0.5)]
+
+
+_fill_scanlines_compiled = njit(cache=True)(_fill_scanlines) if njit is not None else None
 
 
 def validate_volume(volume):
@@ -48,15 +71,48 @@ def _scanlines(volume, starts, ends, base_length):
     offsets -= min(0, int(offsets.min()))
     width = max(int(np.ceil(base_length)) + 1, int(np.max(offsets + counts)))
     result = np.zeros((len(starts), width), dtype=volume.dtype)
-    for row, (start, delta, length, count, offset) in enumerate(
-        zip(starts, differences, lengths, counts, offsets)
-    ):
-        direction = delta / length if length else np.zeros(3)
-        points = start + np.arange(count)[:, None] * direction
-        valid = np.all((points >= 0) & (points <= np.asarray(volume.shape) - 1), axis=1)
-        indices = np.floor(points[valid] + 0.5).astype(np.intp)
-        columns = np.arange(count)[valid] + offset
-        result[row, columns] = volume[indices[:, 0], indices[:, 1], indices[:, 2]]
+    directions = np.divide(differences, lengths[:, None],
+                           out=np.zeros_like(differences), where=lengths[:, None] != 0)
+    if _fill_scanlines_compiled is not None and volume.dtype.isnative:
+        _fill_scanlines_compiled(volume, result, starts, directions, counts, offsets)
+        return result
+    return _fill_scanlines_numpy(volume, result, starts, directions, counts, offsets)
+
+
+def _fill_scanlines_numpy(volume, result, starts, directions, counts, offsets):
+    """Portable fallback, also supporting nonnative byte order."""
+    width = result.shape[1]
+    constant_axes = {}
+    for axis, size in enumerate(volume.shape):
+        if np.all(directions[:, axis] == 0) and np.all(starts[:, axis] == starts[0, axis]):
+            coordinate = starts[0, axis]
+            if coordinate < 0 or coordinate > size - 1:
+                return result
+            constant_axes[axis] = int(np.floor(coordinate + 0.5))
+    columns = np.arange(width)[None, :]
+    # Small row blocks keep temporary coordinate/index grids in cache.
+    # Axis-by-axis generation avoids a full H*W*3 point tensor.
+    for first in range(0, len(starts), 32):
+        last = min(first + 32, len(starts))
+        local = columns - offsets[first:last, None]
+        valid = (local >= 0) & (local < counts[first:last, None])
+        indices = []
+        for axis, size in enumerate(volume.shape):
+            if axis in constant_axes:
+                indices.append(constant_axes[axis])
+                continue
+            coordinate = (starts[first:last, axis, None]
+                          + local * directions[first:last, axis, None])
+            valid &= (coordinate >= 0) & (coordinate <= size - 1)
+            # Clipping only makes masked indices safe to convert. It never
+            # makes an out-of-bounds sample valid.
+            np.clip(coordinate, 0, size - 1, out=coordinate)
+            coordinate += 0.5
+            np.floor(coordinate, out=coordinate)
+            indices.append(coordinate.astype(np.intp))
+        if np.any(valid):
+            selection = tuple(index if np.isscalar(index) else index[valid] for index in indices)
+            result[first:last][valid] = volume[selection]
     return result
 
 

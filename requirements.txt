@@ -3,3 +3,4 @@ pynrrd
 pillow
 imageio
 imageio-ffmpeg
+numba>=0.61

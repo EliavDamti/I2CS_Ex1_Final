@@ -1,0 +1,7 @@
+{
+  "backend": "numba",
+  "cache": "fresh task directory, no existing machine-code cache",
+  "import_ms": 1382.8306999057531,
+  "first_projection_including_compilation_ms": 1162.9539001733065,
+  "second_projection_ms": 1.4079995453357697
+}

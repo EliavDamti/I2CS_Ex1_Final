@@ -40,3 +40,21 @@ Baseline: a6ebdf6, which already fixed the EPS/equal-base issues from the
 - Replaced incorrect README module commands and stale geometric restrictions.
   Updated the test strategy. Validation: all 29 tests pass, including real
   NRRD and FFmpeg round trips for all unsigned assignment dtypes.
+
+## 2026-11-01 — large-plane acceleration and broad benchmarks
+
+- Added Numba as a dependency and a streaming sampling kernel with no fastmath
+  and no parallel-thread scheduling. Cache compiled code only, never results.
+  Preserve NumPy geometry metadata and all unit-step numerical decisions.
+- Retain an explicit NumPy fallback for unavailable Numba/nonnative byte order:
+  generate coordinate grids in 32-row blocks and specialize constant axes.
+- Test that the compiled backend actually runs; independently test the fallback
+  and nonnative-endian uint16. Add 48 seeded random full-image comparisons.
+- Replace narrow benchmark entry points with wrappers over a common suite.
+  Cover small/large/assignment/diagonal/tilted geometries in C and F layouts,
+  with seeded random intensities, three warmups and three trials of forty
+  calls. Record first-call cost, output shapes, raw timings, p95, trial FPS,
+  CPU/platform/dependency versions and projection source hash.
+- Record a separately timed unit-step baseline from a9bb5ce to distinguish
+  acceleration from the earlier change in sampling semantics.
+- Update README, algorithm complexity, test coverage and experiment results.

@@ -48,6 +48,22 @@ class CoordinateTests(unittest.TestCase):
             points = np.array([[2., 2., 2.], [2., 6., 2.], [2., 2., 6.]]) + shift
             np.testing.assert_array_equal(project_triangle(self.volume, *points), reference(self.volume, points))
 
+    def test_seeded_random_full_image_comparisons(self):
+        rng = np.random.default_rng(20261101)
+        volume = rng.integers(0, 65536, (24, 24, 24), dtype=np.uint16)
+        for case in range(24):
+            basis, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+            u, v = basis[:, 0], basis[:, 1]
+            origin = rng.uniform(4, 19, size=3)
+            length = rng.uniform(.2, 16)
+            top, bottom = sorted(rng.uniform(.3, 8, size=2))
+            triangle = (origin, origin + length*u, origin + length*v)
+            trapezoid = (origin-top*u/2, origin+top*u/2,
+                         origin-bottom*u/2+length*v, origin+bottom*u/2+length*v)
+            for function, points in ((project_triangle, triangle), (project_trapezoid, trapezoid)):
+                with self.subTest(case=case, shape=function.__name__):
+                    np.testing.assert_array_equal(function(volume, *points), reference(volume, points))
+
 
 if __name__ == "__main__":
     unittest.main()
