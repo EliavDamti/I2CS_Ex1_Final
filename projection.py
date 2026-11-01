@@ -1,286 +1,102 @@
+"""Unit-distance scanline projections in voxel-index coordinates."""
 
 import numpy as np
+
 GEOMETRY_EPS = 0.001
 
+
+def validate_volume(volume):
+    """Accept assignment unsigned integers and the signed-short MRI sample."""
+    if not isinstance(volume, np.ndarray) or volume.ndim != 3:
+        raise ValueError("Volume must be a 3-dimensional NumPy array")
+    if any(size < 1 or size >= 1024 for size in volume.shape):
+        raise ValueError("Each volume dimension must be between 1 and 1023")
+    if (volume.dtype.kind, volume.dtype.itemsize) not in {
+        ("u", 1), ("u", 2), ("u", 4), ("i", 2)
+    }:
+        raise ValueError("Volume dtype must be uint8, uint16, uint32 or int16")
+
+
+def _vertices(*points):
+    try:
+        points = [np.asarray(point, dtype=np.float64) for point in points]
+    except (ValueError, TypeError, OverflowError) as error:
+        raise ValueError("Vertices must be finite 3D points") from error
+    if any(point.shape != (3,) or not np.all(np.isfinite(point))
+           for point in points):
+        raise ValueError("Vertices must be finite 3D points")
+    return points
+
+
 def sample_volume(volume, point):
-    """Sample a 3D volume using nearest-neighbor sampling."""
-
-    point = np.asarray(point, dtype=float)
-
-    if point.shape != (3,) or not np.all(np.isfinite(point)):
-        raise ValueError("Sampling point must contain 3 finite coordinates")
-
-    # Outside the volume? Return zero.
-    for coordinate, size in zip(point, volume.shape):
-        if coordinate < 0 or coordinate > size - 1:
-            return 0
-
-    # Round to the nearest voxel (ties toward the higher index).
-    indices = np.floor(point + 0.5).astype(int)
-
-    return volume[tuple(indices)]
+    """Nearest voxel; continuous positions outside [0, size-1] return zero."""
+    validate_volume(volume)
+    point, = _vertices(point)
+    if np.any(point < 0) or np.any(point > np.asarray(volume.shape) - 1):
+        return 0
+    return volume[tuple(np.floor(point + 0.5).astype(np.intp))]
 
 
+def _scanlines(volume, starts, ends, base_length):
+    """Sample integer unit distances, preserving geometric row centering."""
+    differences = ends - starts
+    lengths = np.linalg.norm(differences, axis=1)
+    counts = np.floor(lengths).astype(np.intp) + 1
+    offsets = np.floor((base_length - lengths) / 2).astype(np.intp)
+    # The y < Dab loop can extend the last row past a noninteger leg.
+    # Add background columns if needed; never clip a requested sample.
+    offsets -= min(0, int(offsets.min()))
+    width = max(int(np.ceil(base_length)) + 1, int(np.max(offsets + counts)))
+    result = np.zeros((len(starts), width), dtype=volume.dtype)
+    for row, (start, delta, length, count, offset) in enumerate(
+        zip(starts, differences, lengths, counts, offsets)
+    ):
+        direction = delta / length if length else np.zeros(3)
+        points = start + np.arange(count)[:, None] * direction
+        valid = np.all((points >= 0) & (points <= np.asarray(volume.shape) - 1), axis=1)
+        indices = np.floor(points[valid] + 0.5).astype(np.intp)
+        columns = np.arange(count)[valid] + offset
+        result[row, columns] = volume[indices[:, 0], indices[:, 1], indices[:, 2]]
+    return result
 
 
 def project_triangle(volume, a, b, c):
-    """Fast triangle projection with fully vectorized NumPy sampling."""
-
-    if volume.ndim != 3:
-        raise ValueError("Volume must be 3-dimensional")
-
-    a, b, c = [
-        np.asarray(p, dtype=float)
-        for p in (a, b, c)
-    ]
-
-    if any(
-        p.shape != (3,) or not np.all(np.isfinite(p))
-        for p in (a, b, c)
-    ):
-        raise ValueError("Vertices must be finite 3D points")
-
-    # Triangle geometry.
-    ab = b - a
-    ac = c - a
-
-    Dab = np.linalg.norm(ab)
-    Dac = np.linalg.norm(ac)
-    Dbc = np.linalg.norm(c - b)
-
-    if min(Dab, Dac, Dbc) <= 0:
+    """Follow the assignment's y < Dab loop and normalized unit vectors."""
+    validate_volume(volume)
+    a, b, c = _vertices(a, b, c)
+    ab, ac = b - a, c - a
+    dab, dac, dbc = (np.linalg.norm(vector) for vector in (ab, ac, c - b))
+    if not np.all(np.isfinite([dab, dac, dbc])) or min(dab, dac, dbc) <= 0:
         raise ValueError("Degenerate triangle")
-
-    if abs(Dab - Dac) >= GEOMETRY_EPS:
-        raise ValueError("Triangle must be isosceles")
-
-    if np.linalg.norm(np.cross(ab, ac)) <= 1e-10 * Dab * Dac:
+    if abs(dab - dac) >= GEOMETRY_EPS:
+        raise ValueError("Triangle must be isosceles: leg difference < 0.001")
+    if np.linalg.norm(np.cross(ab / dab, ac / dac)) <= 1e-10:
         raise ValueError("Triangle vertices are collinear")
-
-    # Output dimensions.
-    N = int(np.ceil(Dab))
-    H = N
-    W = int(np.ceil(Dbc)) + 1
-
-    E = np.zeros((H, W), dtype=volume.dtype)
-
-    # Calculate endpoints for ALL scanlines at once.
-    ty = (np.arange(H) + 1) / N
-
-    a1 = a + ty[:, None] * ab
-    a2 = a + ty[:, None] * ac
-
-    # Calculate the length and sample count of every scanline.
-    differences = a2 - a1
-
-    d12 = np.linalg.norm(differences, axis=1)
-    K = np.maximum(1, np.ceil(d12).astype(np.intp))
-
-    # Calculate horizontal offsets for all rows.
-    starts = (W - (K + 1)) // 2
-
-    # Create a grid of output pixel positions.
-    rows = np.arange(H)[:, None]
-    columns = np.arange(W)[None, :]
-
-    # Local sample index for every output pixel.
-    j = columns - starts[:, None]
-
-    # Only columns inside each scanline are sampled.
-    inside_triangle = (j >= 0) & (j <= K[:, None])
-
-    # Get the actual row and column of every sample.
-    sample_rows, sample_columns = np.nonzero(inside_triangle)
-
-    sample_j = j[sample_rows, sample_columns]
-
-    # Progress along each scanline.
-    tx = sample_j / K[sample_rows]
-
-    # Calculate all 3D sample positions at once.
-    points = (
-        a1[sample_rows]
-        + tx[:, None] * differences[sample_rows]
-    )
-
-    # Keep the same continuous-coordinate boundary policy.
-    bounds = np.asarray(volume.shape) - 1
-
-    valid = np.all(
-        (points >= 0) & (points <= bounds),
-        axis=1
-    )
-
-    valid_points = points[valid]
-
-    # Nearest-neighbor sampling.
-    indices = np.floor(
-        valid_points + 0.5
-    ).astype(np.intp)
-
-    values = volume[
-        indices[:, 0],
-        indices[:, 1],
-        indices[:, 2]
-    ]
-
-    # Store the samples in their original output positions.
-    E[
-        sample_rows[valid],
-        sample_columns[valid]
-    ] = values
-
-    return E
-
-
+    steps = np.arange(1, int(np.ceil(dab)) + 1)[:, None]
+    return _scanlines(volume, a + steps * (ab / dab),
+                      a + steps * (ac / dac), dbc)
 
 
 def project_trapezoid(volume, a1, a2, b, c):
-    """Fully vectorized isosceles trapezoid projection."""
-
-    if volume.ndim != 3:
-        raise ValueError("Volume must be 3-dimensional")
-
-    # Convert vertices to NumPy arrays.
-    a1, a2, b, c = [
-        np.asarray(p, dtype=float)
-        for p in (a1, a2, b, c)
-    ]
-
-    if any(
-        p.shape != (3,) or not np.all(np.isfinite(p))
-        for p in (a1, a2, b, c)
-    ):
-        raise ValueError("Vertices must be finite 3D points")
-
-    # Calculate the two legs.
-    left_leg = b - a1
-    right_leg = c - a2
-
-    left_length = np.linalg.norm(left_leg)
-    right_length = np.linalg.norm(right_leg)
-
-    # Calculate the two bases.
-    top = a2 - a1
-    bottom = c - b
-
-    top_length = np.linalg.norm(top)
-    bottom_length = np.linalg.norm(bottom)
-
-    # Validate geometry.
-    if min(
-        left_length,
-        right_length,
-        top_length,
-        bottom_length
-    ) <= 0:
+    """Include the upper base, then take unit steps while distance <= leg."""
+    validate_volume(volume)
+    a1, a2, b, c = _vertices(a1, a2, b, c)
+    left, right, top, bottom = b - a1, c - a2, a2 - a1, c - b
+    ll, rl, tl, bl = (np.linalg.norm(v) for v in (left, right, top, bottom))
+    if not np.all(np.isfinite([ll, rl, tl, bl])) or min(ll, rl, tl, bl) <= 0:
         raise ValueError("Degenerate trapezoid")
-
-    if abs(left_length - right_length) >= GEOMETRY_EPS:
-        raise ValueError("Trapezoid legs must have equal length")
-
-    # Bases must be parallel and point in the same direction.
-    if (
-        np.linalg.norm(np.cross(top, bottom))
-        > 1e-6 * top_length * bottom_length
-        or np.dot(top, bottom) <= 0
-    ):
-        raise ValueError("Trapezoid bases must be parallel")
-
-    # Validate nonzero area.
-    normal = np.cross(top, left_leg)
+    if abs(ll - rl) >= GEOMETRY_EPS:
+        raise ValueError("Trapezoid leg difference must be < 0.001")
+    if tl > bl:
+        raise ValueError("First trapezoid base must not exceed second base")
+    if np.linalg.norm(np.cross(top / tl, bottom / bl)) > 1e-6 or np.dot(top / tl, bottom / bl) <= 0:
+        raise ValueError("Trapezoid bases must be parallel and have the same direction")
+    normal = np.cross(top / tl, left / ll)
     normal_length = np.linalg.norm(normal)
-
-    if normal_length <= 1e-10 * top_length * left_length:
+    if normal_length <= 1e-10:
         raise ValueError("Degenerate trapezoid area")
-
-    # All vertices must lie on the same plane.
-    if abs(np.dot(c - a1, normal)) > (
-        1e-6
-        * normal_length
-        * max(top_length, bottom_length, left_length)
-    ):
+    if abs(np.dot(c - a1, normal / normal_length)) > 1e-6 * max(tl, bl, ll):
         raise ValueError("Trapezoid vertices must be coplanar")
-
-     # The first base must not be longer than the second base.
-    # Equal-length bases are allowed by the assignment.
-    if top_length > bottom_length:
-        raise ValueError(
-            "First trapezoid base must not exceed second base"
-        )
-
-    # Calculate output dimensions.
-    N = int(np.ceil(left_length))
-    H = N + 1
-    W = int(np.ceil(max(top_length, bottom_length))) + 1
-
-    E = np.zeros((H, W), dtype=volume.dtype)
-
-    # Calculate ALL scanline endpoints simultaneously.
-    ty = np.arange(H) / N
-
-    p1 = a1 + ty[:, None] * left_leg
-    p2 = a2 + ty[:, None] * right_leg
-
-    # Calculate every scanline's length and sample count.
-    differences = p2 - p1
-
-    d12 = np.linalg.norm(differences, axis=1)
-    K = np.maximum(1, np.ceil(d12).astype(np.intp))
-
-    # Center all scanlines.
-    starts = (W - (K + 1)) // 2
-
-    # Create a grid of output pixel positions.
-    columns = np.arange(W)[None, :]
-
-    # Calculate local sample indices for every row.
-    j = columns - starts[:, None]
-
-    # Identify the pixels belonging to the trapezoid.
-    inside_trapezoid = (j >= 0) & (j <= K[:, None])
-
-    # Get row/column indices of all sampling locations.
-    sample_rows, sample_columns = np.nonzero(inside_trapezoid)
-
-    sample_j = j[sample_rows, sample_columns]
-
-    # Calculate progress across each scanline.
-    tx = sample_j / K[sample_rows]
-
-    # Generate ALL 3D sampling positions at once.
-    sample_points = (
-        p1[sample_rows]
-        + tx[:, None] * differences[sample_rows]
-    )
-
-    # Identify samples inside the volume.
-    bounds = np.asarray(volume.shape) - 1
-
-    valid = np.all(
-        (sample_points >= 0)
-        & (sample_points <= bounds),
-        axis=1
-    )
-
-    valid_points = sample_points[valid]
-
-    # Convert continuous positions to voxel indices.
-    indices = np.floor(
-        valid_points + 0.5
-    ).astype(np.intp)
-
-    # Read voxel values in one NumPy operation.
-    values = volume[
-        indices[:, 0],
-        indices[:, 1],
-        indices[:, 2]
-    ]
-
-    # Store the values at the correct 2D positions.
-    E[
-        sample_rows[valid],
-        sample_columns[valid]
-    ] = values
-
-    return E
+    steps = np.arange(int(np.floor(ll)) + 1)[:, None]
+    return _scanlines(volume, a1 + steps * (left / ll),
+                      a2 + steps * (right / rl), bl)

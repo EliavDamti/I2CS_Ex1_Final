@@ -1,81 +1,36 @@
-# Testing Strategy – Ex1
+# Testing strategy and current coverage
 
-## Objective
-
-Verify that the projection algorithm produces geometrically correct 2D images from 3D volumes and meets the assignment's performance requirements.
-
-## 1. Unit Tests
-
-| Test | Input | Expected Result |
-|---|---|---|
-| Constant volume | Every voxel contains 100 | All in-bounds sampled pixels contain 100 |
-| Coordinate-encoded volume | `M[x,y,z] = x + 10*y + 100*z` | Sampled values match the expected voxel indices |
-| Out-of-bounds sample | Sampling point outside the volume | Return 0 |
-| Triangle endpoint sampling | Known triangle coordinates | Last scanline reaches vertices `b` and `c` |
-| Degenerate triangle | Three collinear points | Reject with a descriptive error |
-| Non-integer coordinates | Fractional 3D points | Correct interpolation of sampling positions and nearest-neighbor lookup |
-
-## 2. Geometry Tests
-
-- Test an axis-aligned triangle with manually calculated sampling locations.
-- Test a triangle on an oblique plane.
-- Verify that scanlines remain between their endpoints.
-- Verify that output rows are centered correctly.
-- Test triangles near volume boundaries.
-
-## 3. Real Dataset Tests
-
-Use the provided MRI dataset:
-
-- Shape: 256 × 256 × 130
-- Data type: int16
-- Intensity range: 0–279
-
-Compare selected output slices visually against reference views from 3D Slicer.
-
-The comparison should use the same geometric plane and coordinate system.
-
-## 4. Performance Tests
-
-Measure:
-
-- Projection runtime per image.
-- Frames per second (FPS).
-- Performance with a synthetic 500 × 500 × 500 byte volume.
-- The impact of different triangle sizes and orientations.
-
-The assignment requires more than 30 FPS and sets approximately 100 FPS as an expected performance target for the large-volume case.
-
-Record hardware specifications and timing conditions.
-
-## 5. Integration Tests
-
-Verify the complete pipeline:
-
-1. Read an NRRD volume.
-2. Read plane definitions from CSV.
-3. Generate the corresponding projection for each row.
-4. Produce an MP4 containing frames in CSV order.
-5. Validate frame count, dimensions, and successful video playback.
-
-## 6. Demo
-
-Prepare a reproducible demonstration using the required command-line structure:
+Run from the repository root:
 
 ```bash
-python Ex0.py file.nrrd file.csv file.mp4
+python -m unittest discover -s tests -v
 ```
 
-The demonstration should include both successful and invalid-input cases.
+Tests use unittest from Python's standard library. Dependencies come from
+requirements.txt. Test modules are also executable with python -m
+tests.test_coordinates (without a .py suffix).
 
-## 7. Results
+## Core acceptance coverage
 
-Record:
+- Hand-computed coordinate rows distinguish unit stepping from the old
+  interpolated sampling: the first row contains [232,322], not [232,332,322].
+- An independent scalar reference compares complete images for both shapes,
+  including fractional lengths, tilted planes, axis permutations and array
+  views with noncontiguous and negative strides.
+- Continuous bounds, nearest-neighbor half ties and exterior regions.
+- Exact unsigned extrema for all three assignment dtypes; signed int16 MRI
+  compatibility and negative values.
+- EPS acceptance/rejection at multiple scales, the strict tolerance boundary,
+  equal bases, the assignment rectangle and sheared equal-base shapes.
+- Unequal legs, reversed/opposite/nonparallel bases, noncoplanar points,
+  duplicate points and a collinear triangle with equal legs.
+- Empty/oversized/non-3D volumes, unsupported dtypes and invalid vertices.
 
-- Tests passed and failed.
-- Sample output images.
-- Any known limitations.
-- Runtime and FPS measurements.
-- The generated MP4 video.
+The reference intentionally uses slow scalar arithmetic rather than calling
+the production sampling kernel. Full-output assertions prevent a constant
+volume or a single last-row assertion from hiding coordinate errors.
 
-**Status:** Testing strategy defined; tests have not yet been implemented or executed.
+CSV/video integration and reproducible dataset tests are added alongside the
+corresponding pipeline changes. Performance measurements belong in RESULTS.md
+and are separate from correctness tests; FPS is not a hardware-independent
+unit-test assertion.

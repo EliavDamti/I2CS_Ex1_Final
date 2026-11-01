@@ -1,40 +1,51 @@
-
+import unittest
 import numpy as np
-from projection import sample_volume, project_triangle
+from projection import project_triangle, project_trapezoid, sample_volume
 
-volume = np.full((10, 10, 10), 100, dtype=np.uint8)
 
-# Out-of-bounds sampling
-assert sample_volume(volume, (-1, 3, 3)) == 0
-assert sample_volume(volume, (10, 3, 3)) == 0
+class InvalidInputTests(unittest.TestCase):
+    def setUp(self):
+        self.volume = np.ones((10, 10, 10), dtype=np.uint8)
 
-# Valid boundary point
-assert sample_volume(volume, (9, 9, 9)) == 100
+    def test_bad_volume_shape_and_dtype(self):
+        for volume in (None, np.zeros((3, 3)), np.zeros((0, 3, 3), dtype=np.uint8),
+                       np.zeros((1024, 1, 1), dtype=np.uint8),
+                       np.zeros((3, 3, 3), dtype=np.float64)):
+            for function, points in ((project_triangle, ((2, 2, 2), (2, 6, 2), (2, 2, 6))),
+                                     (sample_volume, ((1, 1, 1),))):
+                with self.subTest(shape=getattr(volume, "shape", None), function=function.__name__):
+                    with self.assertRaises(ValueError):
+                        function(volume, *points)
 
-# Degenerate triangle must be rejected
-try:
-    project_triangle(
-        volume,
-        (1, 1, 1),
-        (2, 2, 2),
-        (3, 3, 3)
-    )
-except ValueError:
-    print("Degenerate triangle correctly rejected")
-else:
-    raise AssertionError("Degenerate triangle was accepted")
+    def test_malformed_vertices(self):
+        for point in ((1, 2), (np.nan, 2, 3), (1, np.inf, 3), ("bad", 2, 3)):
+            with self.subTest(point=point):
+                with self.assertRaises(ValueError):
+                    project_triangle(self.volume, point, (2, 6, 2), (2, 2, 6))
+                with self.assertRaises(ValueError):
+                    sample_volume(self.volume, point)
 
-# Unequal triangle legs must be rejected
-try:
-    project_triangle(
-        volume,
-        (1, 1, 1),
-        (1, 5, 1),
-        (1, 1, 3)
-    )
-except ValueError:
-    print("Non-isosceles triangle correctly rejected")
-else:
-    raise AssertionError("Invalid triangle was accepted")
+    def test_collinear_equal_legs_and_duplicate_vertices(self):
+        for points in (((2, 4, 2), (2, 2, 2), (2, 6, 2)),
+                       ((2, 2, 2), (2, 2, 2), (2, 2, 2))):
+            with self.assertRaises(ValueError):
+                project_triangle(self.volume, *points)
 
-print("All edge-case tests passed!")
+    def test_invalid_trapezoids(self):
+        cases = {
+            "unequal legs": ((2, 3, 2), (2, 5, 2), (2, 2, 4), (2, 7, 4)),
+            "reversed bases": ((2, 2, 2), (2, 6, 2), (2, 3, 4), (2, 5, 4)),
+            "opposite bases": ((2, 3, 2), (2, 5, 2), (2, 6, 4), (2, 2, 4)),
+            "zero area": ((2, 2, 2), (2, 4, 2), (2, 3, 2), (2, 5, 2)),
+            "zero edge": ((2, 2, 2), (2, 2, 2), (2, 3, 4), (2, 5, 4)),
+            "nonparallel equal legs": ((2, 2, 2), (2, 4, 2), (2, 2, 4), (2, 6, 2)),
+            "noncoplanar equal legs": ((2, 3, 2), (2, 5, 2), (1, 2, 4), (3, 6, 4)),
+        }
+        for name, points in cases.items():
+            with self.subTest(name=name):
+                with self.assertRaises(ValueError):
+                    project_trapezoid(self.volume, *points)
+
+
+if __name__ == "__main__":
+    unittest.main()
