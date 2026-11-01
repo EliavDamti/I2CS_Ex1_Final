@@ -31,6 +31,12 @@ py -m venv .venv
 Run the following commands from the repository root. On Windows, substitute
 .\.venv\Scripts\python.exe for python when using that environment.
 
+If pip reports UnicodeEncodeError in a Windows terminal, use UTF-8 mode:
+
+```powershell
+.\.venv\Scripts\python.exe -X utf8 -m pip install --progress-bar off -r requirements.txt
+```
+
 ## Run the demonstration
 
 Place MRHead_1.nrrd in data/; provenance, download links and checksums are in

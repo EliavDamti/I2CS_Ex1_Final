@@ -65,5 +65,8 @@ was separately verified against the original MRI's full voxel array.
 
 Recorded acceptance result: 35 tests passed, including real codec integration,
 both sampling backends and 48 seeded random full-matrix comparisons.
+The same 35 tests also passed from the original project folder with its own
+.venv (Python 3.12.10, NumPy 2.5.4, Numba 0.68.1); pip check reported no broken
+requirements. That environment's performance is recorded separately in RESULTS.
 Performance measurements belong in RESULTS.md and are separate from
 correctness tests; FPS is not a hardware-independent unit-test assertion.

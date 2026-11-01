@@ -77,3 +77,15 @@ Baseline: a6ebdf6, which already fixed the EPS/equal-base issues from the
 - Update all requirements, dataset, testing and README links/commands.
   Final acceptance: 35 tests pass. No legacy result video is claimed to be
   pixel-identical after intentionally changing the sampling algorithm.
+
+## 2026-11-01 — acceptance in the original project environment
+
+- Fast-forward the original main branch without changing earlier commits or
+  unrelated local datasets; install Numba/llvmlite in the existing .venv.
+- Verify all 35 tests and pip dependency consistency in that environment:
+  Python 3.12.10, NumPy 2.5.4, Numba 0.68.1.
+- Repeat all sixteen benchmark scenarios there and preserve raw results in
+  benchmark-project-env.json. Keep those measurements separate from the
+  initial Python 3.12.14/NumPy 2.3.5 experiment.
+- Document the UTF-8 pip invocation that resolves console encoding errors
+  with the Hebrew Windows project path. No projection code changes here.

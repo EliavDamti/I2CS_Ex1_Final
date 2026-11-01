@@ -131,3 +131,42 @@ playback or end-to-end disk/codec throughput. Nearest-neighbor aliasing,
 first-call JIT cost, large-coordinate canvases and hardware variation remain
 explicit limitations. CPU utilization, peak RSS and all possible planes were
 not exhaustively measured. No performance test silently skips a failed case.
+
+## Acceptance in the original project environment
+
+The original project folder was fast-forwarded to the completed commits and its
+existing .venv received the Numba dependency. All 35 tests passed there and
+pip check reported no broken requirements. Python is 3.12.10, NumPy 2.5.4,
+Numba 0.68.1 and llvmlite 0.50.0; the same CPU and OS are used.
+
+The complete suite was rerun with the same seed, geometries, memory layouts,
+warmups and three forty-call trials. Raw data:
+[benchmark-project-env.json](../results/benchmark-project-env.json).
+
+| Case | Layout | Mean FPS | Slowest trial FPS |
+|---|---|---:|---:|
+| small_triangle | C | 2297.77 | 1979.34 |
+| small_trapezoid | C | 1953.84 | 1860.25 |
+| assignment_triangle | C | 760.94 | 727.57 |
+| assignment_rectangle | C | 432.13 | 405.27 |
+| review_large_trapezoid | C | 437.01 | 409.89 |
+| diagonal_triangle | C | 108.92 | 106.82 |
+| diagonal_rectangle | C | 202.29 | 201.44 |
+| tilted_trapezoid | C | 140.16 | 131.37 |
+| small_triangle | F | 1608.05 | 1411.01 |
+| small_trapezoid | F | 1264.41 | 980.17 |
+| assignment_triangle | F | 789.03 | 715.54 |
+| assignment_rectangle | F | 76.09 | 72.11 |
+| review_large_trapezoid | F | 156.93 | 152.36 |
+| diagonal_triangle | F | 72.54 | 67.44 |
+| diagonal_rectangle | F | 110.07 | 107.47 |
+| tilted_trapezoid | F | 214.59 | 191.70 |
+
+All sixteen scenarios passed every trial above 30 FPS. The lowest mean was
+72.54 FPS and the slowest trial was 67.44 FPS. Some large cases
+remain below the expected 100 FPS target. These are recorded observations,
+not a guarantee for all possible geometries or machines.
+
+The first pip invocation encountered a console UnicodeEncodeError; rerunning
+with Python UTF-8 mode and disabled pip progress completed installation.
+README includes the corresponding command.
