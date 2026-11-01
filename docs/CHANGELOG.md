@@ -122,3 +122,14 @@ Baseline: a6ebdf6, which already fixed the EPS/equal-base issues from the
   performance limits. Update README, SRS, DATASET, TESTING and RESULTS.
 - Keep the original three-row CSV as a minimal compatibility example and send
   its README command to quickstart.mp4 so it does not overwrite the full demo.
+
+## 2026-11-01 — final submission acceptance in the original folder
+
+- Apply the two implementation/demo commits by guarded fast-forward.
+- Rerun all 41 tests and complete raw/showcase verification in the original
+  Python 3.12.10, NumPy 2.5.4, Numba 0.68.1 environment.
+- Save benchmark-submission-env.json for the final numerical source hash.
+  All sixteen mean rates exceed 100 FPS (minimum 104.42); the slowest separate
+  trial is 98.81 FPS. Keep compilation and file/codec time outside warm FPS.
+- Update README, RESULTS, TESTING and the PDF requirement mapping with the
+  actual final evidence, without treating historical measurements as current.

@@ -225,3 +225,36 @@ real signed-short MRI extension retain their earlier coverage.
 Exact inputs, metadata and checks: results/demo_planes.csv,
 results/demo-manifest.json and results/demo-validation.json.
 See DEMO.md for reproduction and ASSIGNMENT_COMPLIANCE.md for the PDF mapping.
+
+## Final submission acceptance in the original environment
+
+After the PDF review and complete demo changes, all 41 tests and both complete
+video verifications passed in the original project folder. The final source
+was measured on Python 3.12.10, NumPy 2.5.4 and Numba 0.68.1 with the same
+CPU, seed, sixteen cases, warmups and three forty-call trials. Raw data:
+[benchmark-submission-env.json](../results/benchmark-submission-env.json).
+
+| Case | Layout | Mean FPS | Slowest trial FPS |
+|---|---|---:|---:|
+| small_triangle | C | 1737.54 | 1397.22 |
+| small_trapezoid | C | 1406.38 | 1383.44 |
+| assignment_triangle | C | 503.53 | 461.48 |
+| assignment_rectangle | C | 397.58 | 337.84 |
+| review_large_trapezoid | C | 322.20 | 282.10 |
+| diagonal_triangle | C | 104.42 | 98.81 |
+| diagonal_rectangle | C | 262.70 | 202.85 |
+| tilted_trapezoid | C | 122.89 | 116.23 |
+| small_triangle | F | 2086.67 | 1970.55 |
+| small_trapezoid | F | 1347.19 | 1087.74 |
+| assignment_triangle | F | 809.17 | 767.48 |
+| assignment_rectangle | F | 144.01 | 136.98 |
+| review_large_trapezoid | F | 156.98 | 154.37 |
+| diagonal_triangle | F | 111.55 | 109.17 |
+| diagonal_rectangle | F | 112.02 | 109.89 |
+| tilted_trapezoid | F | 211.81 | 202.08 |
+
+All sixteen mean rates exceed the expected 100 FPS target; the lowest is
+104.42 FPS. The slowest separate trial is 98.81 FPS, and every trial exceeds
+the mandatory 30 FPS minimum. This is a measured warm result for these cases,
+not a guarantee for unmeasured planes or hardware. The earlier source-hashed
+results are retained to show the progression and environment variation.

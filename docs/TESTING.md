@@ -80,5 +80,7 @@ and presentation videos with decoding and mismatch rejection; invalid sweep
 inputs. The final suite contains 41 passing tests. The full MRI experiment
 separately decodes 60 raw and 432 presentation frames and compares every raw
 frame with its ordered CSV projection. See demo-validation.json and DEMO.md.
+The final 41-case suite and full video verification were also rerun successfully
+inside the original project's .venv after the commits were applied.
 Performance measurements belong in RESULTS.md and are separate from
 correctness tests; FPS is not a hardware-independent unit-test assertion.

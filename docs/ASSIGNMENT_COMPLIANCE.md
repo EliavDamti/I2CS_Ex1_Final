@@ -89,9 +89,14 @@ and remain explicit geometry failures, although their format parses.
 
 ## Practical limits
 
+Final acceptance in the original .venv: all 41 tests passed, both complete
+videos decoded and all raw CSV comparisons passed. The final sixteen-case
+benchmark is results/benchmark-submission-env.json: every mean exceeds
+100 FPS (lowest 104.42), with a slowest individual trial of 98.81 FPS.
+
 Measured warm throughput is not a universal guarantee for all possible planes
 or machines. The first Numba signature compilation can take seconds.
-Some measured cases remain near or below the expected 100 FPS target while
+Earlier environments include cases near or below the expected 100 FPS target;
 all measured trials exceed the mandatory 30 FPS minimum. Physical-coordinate
 resampling, clinical interpretation and an unlimited-size streaming pipeline
 are outside this assignment's implemented scope.

@@ -167,6 +167,11 @@ The suite covers eight geometries in both C and Fortran memory order on a
 seeded random 500^3 uint8 volume. It records three warmups and three trials
 of forty timed projections, plus environment details and individual timings.
 
+In the final original-project run, all sixteen case/layout mean rates exceeded
+100 FPS; the lowest was 104.42 FPS. The slowest individual trial was 98.81 FPS.
+The source-hashed [accepted run](results/benchmark-submission-env.json) records
+the measured scope, environment and warmup; it is not a universal guarantee.
+
 ## Layout and documents
 
 | Path | Purpose |
