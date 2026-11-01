@@ -26,6 +26,7 @@ The entry point is python Ex0.py file.nrrd file.csv file.mp4.
 | FR-11 | Normalize display globally, including zero, and center each projection on an even-sized canvas. | Normalization and video tests |
 | FR-12 | Reject invalid files/records/geometry without silently losing a populated CSV record. | Negative CLI/parser tests |
 | FR-13 | Provide reproducible unsigned NRRD generation and verified public MRI provenance. | Generator reload/hash tests and recorded MRI voxel comparison |
+| FR-14 | Provide a reproducible multi-plane MRI experiment and a separately labeled explanatory presentation. | Sixty serialized planes, raw frame comparisons and complete presentation decoding |
 
 ## Decisions resolving assignment ambiguities
 
@@ -34,6 +35,11 @@ triangle overshoot for noninteger legs and the trapezoid endpoint convention.
 CSV schema and error behavior are documented in README.md and DATASET.md.
 CSV coordinates refer to voxel indices, without applying the NRRD physical
 origin, directions or anisotropic spacing.
+
+ASSIGNMENT_COMPLIANCE.md maps all eight deliverables from the supplied PDF to
+code, documents, tests and outputs. DEMO.md defines the sixty-plane experiment.
+The required Ex0 output still has one frame per CSV row; titles and held frames
+appear only in the separate explanatory presentation.
 
 ## Nonfunctional requirements
 

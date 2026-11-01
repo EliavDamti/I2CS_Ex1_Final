@@ -43,11 +43,31 @@ Place MRHead_1.nrrd in data/; provenance, download links and checksums are in
 [DATASET.md](docs/DATASET.md).
 
 ```bash
-python Ex0.py data/MRHead_1.nrrd planes.csv results/demo.mp4
+python Ex0.py data/MRHead_1.nrrd planes.csv results/quickstart.mp4
 ```
 
-[View the MRI demonstration](results/demo.mp4).
-The playback rate is 2 FPS; projection throughput is measured separately.
+[Watch the explained 720p MRI demonstration](results/showcase.mp4)
+or [the raw assignment output](results/demo.mp4).
+The raw video contains sixty ordered CSV projections at 2 FPS.
+The 36-second presentation shows three sweeps, the current plane in 3D,
+geometry labels and progress. Playback is separate from computation speed.
+
+Rebuild and verify both videos:
+
+```bash
+python -m scripts.create_demo data/MRHead_1.nrrd
+python -m scripts.create_demo data/MRHead_1.nrrd --verify-only
+```
+
+Reproduce the raw video using the required main interface:
+
+```bash
+python Ex0.py data/MRHead_1.nrrd results/demo_planes.csv results/demo.mp4
+```
+
+See [DEMO.md](docs/DEMO.md) for the script, timings and validation, and
+[ASSIGNMENT_COMPLIANCE.md](docs/ASSIGNMENT_COMPLIANCE.md) for the direct
+three-page PDF review and requirement-by-requirement evidence.
 
 For a verified public MRI download or a reproducible synthetic demo:
 
@@ -162,6 +182,9 @@ of forty timed projections, plus environment details and individual timings.
 | docs/TESTING.md | Verification strategy and coverage |
 | docs/RESULTS.md | Measured experiments and limitations |
 | docs/CHANGELOG.md | Detailed changes since the reviewed baseline |
+| docs/DEMO.md | Reproducible 60-plane raw video and 720p presentation |
+| docs/ASSIGNMENT_COMPLIANCE.md | Supplied PDF requirements and acceptance evidence |
+| scripts/create_demo.py | Generate, render and decode-verify the full MRI demo |
 
 The application keeps all computed projections in memory before encoding.
 Nearest-neighbor sampling can alias. Physical-coordinate conversion and GPU

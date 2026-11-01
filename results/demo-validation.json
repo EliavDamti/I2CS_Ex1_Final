@@ -1,0 +1,23 @@
+{
+  "raw": {
+    "decoded_frames": 60,
+    "codec": "h264",
+    "fps": 2.0,
+    "size": [
+      182,
+      216
+    ],
+    "largest_mean_absolute_encoding_error": 1.4029049654049655,
+    "ordered_planes_compared": 60
+  },
+  "showcase": {
+    "decoded_frames": 432,
+    "codec": "h264",
+    "fps": 12.0,
+    "size": [
+      720,
+      1280
+    ]
+  },
+  "status": "passed"
+}

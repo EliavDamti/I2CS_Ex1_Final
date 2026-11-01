@@ -4,6 +4,10 @@ Revised 2026-11-01. These results supersede the earlier interpolation-based
 152.92/142.59 FPS claims, which used smaller planes and a different sampler.
 Raw timing files are versioned with this document.
 
+The latest MRI experiment is now the sixty-plane raw video and the 720p
+presentation documented in DEMO.md. The earlier three-frame measurements
+below are retained as historical context, not as the current demo metadata.
+
 ## Environment and method
 
 CPU: Intel(R) Core(TM) Ultra 7 255U; 14 logical CPUs. OS: Windows-11-10.0.26200-SP0.
@@ -199,3 +203,25 @@ Earlier source-hashed runs remain historical.
 
 Lowest mean: 95.14 FPS. Every trial exceeded 30 FPS;
 100 FPS remains a target rather than a claim for every case.
+
+## Expanded MRI experiment against the supplied PDF
+
+scripts/create_demo.py generates sixty valid numbered-coordinate planes in
+three groups: equal-base rectangles sweeping X, triangles sweeping Y, and
+trapezoids tilted from -28 to +28 degrees. Both unsigned CSV schemas and the
+real signed-short MRI extension retain their earlier coverage.
+
+- Raw assignment video: 60 H.264 frames, 216 x 182, 2 FPS, 30 seconds.
+- Separate explanatory presentation: 432 H.264 frames, 1280 x 720, 12 FPS,
+  36 seconds, with section labels, voxel-plane diagram and progress.
+- Every frame in both files was decoded. All sixty raw frames were compared
+  to projections from their corresponding serialized CSV row. The largest
+  mean absolute compression difference was 1.403 grayscale levels.
+- Opening, orthogonal, triangular, oblique and ending presentation frames
+  were visually inspected; source MRI pixels remain recognizable and text
+  remains within its layout.
+- All 41 automated tests pass, including shortened real-codec demo generation.
+
+Exact inputs, metadata and checks: results/demo_planes.csv,
+results/demo-manifest.json and results/demo-validation.json.
+See DEMO.md for reproduction and ASSIGNMENT_COMPLIANCE.md for the PDF mapping.

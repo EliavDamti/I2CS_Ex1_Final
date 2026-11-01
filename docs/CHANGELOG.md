@@ -102,3 +102,23 @@ Baseline: a6ebdf6, which already fixed the EPS/equal-base issues from the
   Fortran-order uint32 plane comparisons and two integer-boundary regressions.
 - Preserve the new benchmark separately as benchmark-layout-aware.json; its
   source hash identifies this version, while earlier results stay historical.
+
+## 2026-11-01 — complete MRI demonstration and PDF traceability
+
+- Add a reproducible sixty-plane experiment: 20 equal-base rectangles, 20
+  triangles and 20 rotated trapezoids, with exact numbered-coordinate CSV.
+- Generate the required raw one-frame-per-row MP4 (60 frames, 30 seconds) and
+  a separate 720p explanatory presentation (432 frames, 36 seconds). Add
+  section cards, current-plane wireframe, geometry, progress and a poster.
+- Keep source-derived grayscale display and serialized coordinates consistent
+  between videos. Stream rendering/verification instead of retaining the
+  complete HD video in memory. Use system fonts with a portable fallback.
+- Decode both videos fully and compare every raw frame against its ordered
+  projection. Commit the validation report, coordinates and playback manifest.
+- Add all-plane validity/order tests and a short real-NRRD/codec round trip
+  with manifest mismatch rejection. Final suite: 41 passing tests.
+- Add DEMO.md and ASSIGNMENT_COMPLIANCE.md with the exact supplied PDF hash,
+  page-specific requirements, reproduction commands and explicit ambiguity/
+  performance limits. Update README, SRS, DATASET, TESTING and RESULTS.
+- Keep the original three-row CSV as a minimal compatibility example and send
+  its README command to quickstart.mp4 so it does not overwrite the full demo.

@@ -73,5 +73,12 @@ After reviewing the attached PDF directly, the layout/stability extension adds
 24 random Fortran-order uint32 plane comparisons, a hand-specified complete
 rotated 4x5 rectangle, and a genuine 4+1e-10 leg that must keep its fifth row.
 This guards numerical integer boundaries separately from the assignment EPS.
+
+The full demonstration extension adds three integration/definition tests:
+all sixty serialized MRI planes and section order; real synthetic NRRD to raw
+and presentation videos with decoding and mismatch rejection; invalid sweep
+inputs. The final suite contains 41 passing tests. The full MRI experiment
+separately decodes 60 raw and 432 presentation frames and compares every raw
+frame with its ordered CSV projection. See demo-validation.json and DEMO.md.
 Performance measurements belong in RESULTS.md and are separate from
 correctness tests; FPS is not a hardware-independent unit-test assertion.

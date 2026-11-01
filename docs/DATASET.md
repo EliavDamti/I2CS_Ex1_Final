@@ -95,6 +95,12 @@ a separate recorded experiment.
 
 ## CSV fixture and ordering
 
+The expanded experiment uses results/demo_planes.csv, generated for the
+MRHead volume by scripts/create_demo.py: twenty equal-base rectangular planes,
+twenty triangles and twenty tilted trapezoids. All sixty records are valid.
+demo-manifest.json preserves the exact serialized coordinates and playback
+metadata. See DEMO.md for both videos and their decode verification.
+
 Both supported CSV schemas and point ordering are specified in README.md.
 tests/fixtures/assignment-example.csv captures the
 [assignment's linked sheet](https://docs.google.com/spreadsheets/d/1Tfy1yMYhAJjRBA8ZpRp_07pZXqGtxWhWoP02yZW1FQE/edit).
@@ -104,8 +110,9 @@ fourth records do not meet the equal-leg requirement; projection validation
 rejects them. Supporting the sheet's schema does not assert that all example
 geometries satisfy the stated contract.
 
-The MRI planes.csv stays in the original named-coordinate format to verify
-backward compatibility. Every populated valid CSV row generates one frame in
+The minimal three-row planes.csv stays in the original named-coordinate
+format to verify backward compatibility; its quickstart output is separate
+from the expanded sixty-frame experiment. Every populated valid row generates one frame in
 list order; blank-type populated rows fail with a line number.
 
 ## Performance input
