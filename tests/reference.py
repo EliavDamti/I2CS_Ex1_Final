@@ -35,7 +35,9 @@ def reference(volume, points):
         for j in range(math.floor(stable(length)) + 1):
             point = [start[k] + j * ((end[k] - start[k]) / length)
                      if length else start[k] for k in range(3)]
-            if all(0 <= point[k] <= volume.shape[k] - 1 for k in range(3)):
+            tolerances = [8 * math.ulp(1.) * max(1, size-1) for size in volume.shape]
+            if all(-tolerances[k] <= point[k] <= volume.shape[k] - 1 + tolerances[k]
+                   for k in range(3)):
                 values.append(volume[tuple(math.floor(x + .5) for x in point)])
             else:
                 values.append(0)

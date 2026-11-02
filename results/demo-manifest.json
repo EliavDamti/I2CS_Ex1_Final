@@ -1,5 +1,8 @@
 {
   "source": "MRHead_1.nrrd",
+  "source_file_sha256": "e9b54e8855e9024f2238e27224702c1dcb49c64407d937499a3cc42fb1114c8b",
+  "source_voxel_sha256_c_order": "2ba83ea952f3a580bae7db65c7a4724c0c4d9d247445d4ff8db94c03f25a591a",
+  "projection_sha256": "89f736b16bf3ef13f43b21a0d82b1b8ba1838070da90fe8c03801dcadb411ebc",
   "volume_shape": [
     256,
     256,
@@ -1672,8 +1675,5 @@
       ],
       "index": 60
     }
-  ],
-  "source_file_sha256": "e9b54e8855e9024f2238e27224702c1dcb49c64407d937499a3cc42fb1114c8b",
-  "source_voxel_sha256_c_order": "2ba83ea952f3a580bae7db65c7a4724c0c4d9d247445d4ff8db94c03f25a591a",
-  "projection_sha256": "3e974ddc589a00177285444dc3488350dce575396521d429e6e77943e9f02ffb"
+  ]
 }

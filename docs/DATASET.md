@@ -1,6 +1,6 @@
 # Dataset definition and reproducibility
 
-Revised 2026-11-01. The repository contains generators, CSV definitions and
+Revised 2026-11-02. The repository contains generators, CSV definitions and
 small result artifacts; large NRRD inputs are excluded from Git.
 
 ## MRHead medical sample
@@ -114,6 +114,24 @@ The minimal three-row planes.csv stays in the original named-coordinate
 format to verify backward compatibility; its quickstart output is separate
 from the expanded sixty-frame experiment. Every populated valid row generates one frame in
 list order; blank-type populated rows fail with a line number.
+
+## Supplied biscuit and croissant examples
+
+These additional local NRRDs were supplied by the user. They are not
+redistributed in Git, and no public download/provenance is asserted for them.
+The exact input file hashes are recorded in results/examples-validation.json.
+
+| Local file | Shape (voxel indices) | Dtype | Intensity range | CSV |
+|---|---|---|---|---|
+| data/biscuit_cake.nrrd | 256 x 256 x 130 | uint16 | 0..3986 | examples/biscuit_cake.csv |
+| data/croissant.nrrd | 500 x 500 x 500 | uint8 | 0..255 | examples/croissant.csv |
+
+The biscuit list contains 120 equal-base trapezoids. The croissant list
+contains 100 triangles at widely changing positions and angles; it does not
+describe a smooth parallel sweep. Every croissant triangle extends partly
+outside the volume, so exterior samples correctly become zero. Both CSVs
+retain their supplied coordinates/order. All 220 output frames were decoded
+and compared with their corresponding projections after final regeneration.
 
 ## Performance input
 

@@ -1,6 +1,6 @@
 # Software Requirements Specification
 
-Status: implemented contract, revised 2026-11-01.
+Status: implemented contract, revised 2026-11-02.
 
 ## Scope
 
@@ -19,7 +19,7 @@ The entry point is python Ex0.py file.nrrd file.csv file.mp4.
 | FR-04 | Accept triangle leg difference strictly below 0.001 voxel units. | Multi-scale EPS and strict-boundary tests |
 | FR-05 | Accept equal trapezoid bases; require first base <= second, equal legs within EPS, parallel directed bases and coplanarity. | Rectangle, sheared parallelogram, invalid trapezoids |
 | FR-06 | Follow normalized unit-distance steps on legs and scanlines. | Independent scalar reference and hand-computed rows |
-| FR-07 | Use nearest neighbor floor(p+0.5); test continuous bounds before rounding; fill outside with zero. | Boundary and partial/full exterior tests |
+| FR-07 | Use nearest neighbor floor(p+0.5); test continuous bounds before rounding with machine-roundoff allowance on computed scanlines; fill outside with zero. | Analytic boundary rectangle and partial/full exterior tests |
 | FR-08 | Return E[row,column], centered by the geometric offset; preserve all requested samples with background padding. | Full-matrix reference comparisons |
 | FR-09 | Read ordered triangle/four-point CSV records with informative errors. | CSV parser tests |
 | FR-10 | Encode one uniformly sized RGB H.264/yuv420p frame per record at 2 playback FPS. | Decode actual MP4, count frames, check dimensions and order |

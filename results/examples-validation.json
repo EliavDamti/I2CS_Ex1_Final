@@ -1,0 +1,61 @@
+{
+  "projection_sha256": "89f736b16bf3ef13f43b21a0d82b1b8ba1838070da90fe8c03801dcadb411ebc",
+  "examples": [
+    {
+      "name": "biscuit",
+      "nrrd": "data/biscuit_cake.nrrd",
+      "nrrd_sha256": "1c4bff1cff5dd7546bf422c79798f4b4ceca5e670839cfce4670d953986e50bd",
+      "csv": "examples/biscuit_cake.csv",
+      "csv_sha256": "a8f2b287187def374503ca75ddaf70b7fb85f559c2196790fabe17d171f512ae",
+      "video": "results/biscuit.mp4",
+      "video_sha256": "3bee5b2811adf0815b8c389308c574e2ff684e3e879375a6ee76e7c4690c4863",
+      "volume_shape": [
+        256,
+        256,
+        130
+      ],
+      "volume_dtype": "uint16",
+      "intensity_range": [
+        0,
+        3986
+      ],
+      "frames": 120,
+      "decoded_and_compared_frames": 120,
+      "fps": 2,
+      "size": [
+        256,
+        258
+      ],
+      "largest_mean_absolute_encoding_error": 1.4899921269379846,
+      "status": "passed"
+    },
+    {
+      "name": "croissant",
+      "nrrd": "data/croissant.nrrd",
+      "nrrd_sha256": "31b9c988af6c77708e4fa9bbf4e93a7a1e22708e45dbdf735800386b9afc8f77",
+      "csv": "examples/croissant.csv",
+      "csv_sha256": "733d6de691ed6773049a9804af4a05fcebcfb8c500531bd0a312394d9383b26d",
+      "video": "results/croissant.mp4",
+      "video_sha256": "198f1cac89d3b0c0853f80d532e5d3b28a3c1d4a7d90479dba75cbe060d245bb",
+      "volume_shape": [
+        500,
+        500,
+        500
+      ],
+      "volume_dtype": "uint8",
+      "intensity_range": [
+        0,
+        255
+      ],
+      "frames": 100,
+      "decoded_and_compared_frames": 100,
+      "fps": 2,
+      "size": [
+        560,
+        502
+      ],
+      "largest_mean_absolute_encoding_error": 0.9143639726807058,
+      "status": "passed"
+    }
+  ]
+}

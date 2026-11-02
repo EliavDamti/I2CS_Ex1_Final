@@ -1,113 +1,109 @@
-# I2SE Ex1 — 3D volume plane projection
+﻿# I2SE Ex1 - 3D volume plane projection
 
 Extract isosceles triangle and trapezoid slices from a 3D NRRD volume and
-encode one MP4 frame per CSV record, in order.
+encode one MP4 frame per CSV record, in order. The implementation uses the
+assignment's normalized unit-distance scanlines and preserves integer
+intensities in the projection matrices.
 
-The implementation follows the assignment's normalized **unit-distance**
-scanline steps. Projection matrices preserve source integer intensities.
-Nearest-neighbor voxel sampling uses floor(p+0.5); positions outside the
-continuous volume bounds return zero.
+## Install
 
-## Setup
-
-Use Python 3.10 or later:
+Use Python 3.10 or later. The submission was validated on Python 3.12.10.
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-Numba compiles the sampling loop on its first use for each dtype/layout.
-Allow for that startup cost; subsequent projections reuse the compiled code.
-Install all requirements to use the measured performance path. A portable
-NumPy fallback preserves correctness when Numba is unavailable.
-
-Windows virtual environment:
-
-```powershell
-py -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-```
-
-Run the following commands from the repository root. On Windows, substitute
-.\.venv\Scripts\python.exe for python when using that environment.
-
-If pip reports UnicodeEncodeError in a Windows terminal, use UTF-8 mode:
-
-```powershell
-.\.venv\Scripts\python.exe -X utf8 -m pip install --progress-bar off -r requirements.txt
-```
-
-## Run the demonstration
-
-Place MRHead_1.nrrd in data/; provenance, download links and checksums are in
-[DATASET.md](docs/DATASET.md).
+To reproduce the tested Python 3.12 environment, install the recorded versions:
 
 ```bash
-python Ex0.py data/MRHead_1.nrrd planes.csv results/quickstart.mp4
+python -m pip install -r requirements-lock.txt
 ```
 
-[Watch the explained 720p MRI demonstration](results/showcase.mp4)
-or [the raw assignment output](results/demo.mp4).
-The raw video contains sixty ordered CSV projections at 2 FPS.
-The 36-second presentation shows three sweeps, the current plane in 3D,
-geometry labels and progress. Playback is separate from computation speed.
+On Windows, create a virtual environment with `py -m venv .venv`, then use
+`.venv\Scripts\python.exe` instead of `python`. If pip has a terminal encoding
+error, use `.venv\Scripts\python.exe -X utf8 -m pip install --progress-bar off -r requirements.txt`.
 
-Rebuild and verify both videos:
+Numba compiles each dtype/layout on first use; subsequent calls reuse compiled
+code. The NumPy fallback preserves correctness, but its performance is not
+claimed to meet the large-plane requirement.
+
+## Run
+
+Run commands from the repository root. The required main interface is:
 
 ```bash
-python -m scripts.create_demo data/MRHead_1.nrrd
-python -m scripts.create_demo data/MRHead_1.nrrd --verify-only
+python Ex0.py file.nrrd file.csv file.mp4
 ```
 
-Reproduce the raw video using the required main interface:
+Reproduce the submitted 60-frame MRI video:
 
 ```bash
 python Ex0.py data/MRHead_1.nrrd results/demo_planes.csv results/demo.mp4
 ```
 
-See [DEMO.md](docs/DEMO.md) for the script, timings and validation, and
-[ASSIGNMENT_COMPLIANCE.md](docs/ASSIGNMENT_COMPLIANCE.md) for the direct
-three-page PDF review and requirement-by-requirement evidence.
-
-For a verified public MRI download or a reproducible synthetic demo:
+The NRRD input is excluded from Git. See [DATASET.md](docs/DATASET.md) for
+provenance, hashes, a verified public download and deterministic generators.
+A download-only setup can use:
 
 ```bash
 python -m scripts.download_mri
-python -m scripts.generate_datasets
-python Ex0.py data/generated/synthetic-uint32.nrrd data/generated/planes.csv results/synthetic-uint32.mp4
+python Ex0.py data/MRHead-canonical.nrrd results/demo_planes.csv results/demo-canonical.mp4
 ```
 
-The downloader saves data/MRHead-canonical.nrrd, verifies Slicer's SHA256
-and refuses to replace an existing file. The generator requires no network.
+The minimal three-plane example uses a separate output:
 
-## Input contract
+```bash
+python Ex0.py data/MRHead_1.nrrd planes.csv results/quickstart.mp4
+```
 
-- Volume: three axes, each size 1..1023; uint8, uint16 or uint32.
-  Signed int16 is also supported for the MRHead sample.
-- Coordinates: finite voxel indices M[x,y,z], independent of NRRD physical
-  origin/directions. The reader uses index_order="F".
-- Triangle: vertices (a,b,c), nonzero area, abs(dist(a,b)-dist(a,c)) < 0.001.
-- Trapezoid: (a1,a2,b,c), equal legs within the same strict absolute tolerance,
-  nonzero area, coplanar points and parallel bases with matching direction.
-  dist(a1,a2) <= dist(b,c); equal bases and rectangles are valid.
-  Base ordering tolerates only float64 roundoff, avoiding false rejections
-  of rotated equal bases; a genuine longer first base still fails.
-- Returned arrays use E[row,column]. They retain the input dtype.
-- Invalid files, populated CSV records and geometry fail explicitly.
-  CLI errors exit with status 2 and do not replace an existing output video.
+## Submitted demonstrations
 
-The triangle's integer y<Dab loop may step beyond a noninteger leg, as in the
-assignment. For trapezoids, the documented extension starts at the upper base
-and takes whole unit steps while distance <= left-leg length. Sampling,
-centering, padding and numerical tolerances are defined in
-[ALGORITHM.md](docs/ALGORITHM.md).
+| Video | Input CSV | Content |
+|---|---|---|
+| [MRI raw output](results/demo.mp4) | [demo_planes.csv](results/demo_planes.csv) | 60 ordered planes, 30 seconds at 2 FPS |
+| [MRI presentation](results/showcase.mp4) | Same 60 planes | 720p explanatory presentation, 36 seconds |
+| [Biscuit output](results/biscuit.mp4) | [biscuit_cake.csv](examples/biscuit_cake.csv) | 120 ordered trapezoids, 60 seconds |
+| [Croissant output](results/croissant.mp4) | [croissant.csv](examples/croissant.csv) | 100 ordered triangles, 50 seconds |
+
+The raw videos have exactly one frame per CSV row. The separate MRI
+presentation repeats images and adds labels. The croissant CSV changes
+positions and angles sharply; its video deliberately follows that order,
+so it is a collection of different cuts rather than a smooth scan.
+
+```bash
+python Ex0.py data/biscuit_cake.nrrd examples/biscuit_cake.csv results/biscuit.mp4
+python Ex0.py data/croissant.nrrd examples/croissant.csv results/croissant.mp4
+python -m scripts.create_demo data/MRHead_1.nrrd
+python -m scripts.create_demo data/MRHead_1.nrrd --verify-only
+```
+
+Biscuit and croissant NRRDs are user-supplied local datasets; they are not
+required to run the public MRI or synthetic examples.
+
+## Input and numerical contract
+
+- Volume: three axes of size 1..1023; uint8, uint16 or uint32. Signed int16
+  is additionally supported for the MRI sample.
+- Coordinates: finite voxel indices `M[x,y,z]`, loaded with `index_order="F"`.
+  NRRD physical origin, directions and spacing are not applied.
+- Triangle points `(a,b,c)`: nonzero area and `abs(dist(a,b)-dist(a,c)) < 0.001`.
+- Trapezoid points `(a1,a2,b,c)`: equal legs within the same strict tolerance,
+  coplanar points, parallel directed bases, nonzero area and first base no
+  longer than the second. Equal bases are accepted with roundoff handling.
+- Sampling: nearest neighbor `floor(p+0.5)`. Exterior positions return zero;
+  computed scanlines allow only machine-roundoff deviations at volume edges.
+- Outputs use `E[row,column]` and retain the source dtype. Video display is
+  globally normalized, centered and padded to common even dimensions.
+- Invalid files, populated CSV rows and geometry fail explicitly. CLI errors
+  exit with status 2 and preserve an existing output video.
+
+The assignment leaves several rasterization details unspecified.
+[ALGORITHM.md](docs/ALGORITHM.md) defines dimensions, rounding, centering,
+fractional triangle overshoot and the trapezoid endpoint convention.
 
 ## CSV formats
 
-Both schemas are accepted automatically. An optional index/metadata column
-is ignored. Headers tolerate surrounding spaces and a UTF-8 BOM.
-
-Assignment example schema:
+The assignment's numbered-coordinate schema:
 
 ```csv
 Number of Points (3 or 4),x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4
@@ -115,7 +111,7 @@ Number of Points (3 or 4),x1,y1,z1,x2,y2,z2,x3,y3,z3,x4,y4,z4
 4,128,80,40,128,120,40,128,60,100,128,140,100
 ```
 
-Original repository schema, retained for compatibility:
+The original named-coordinate schema is also accepted:
 
 ```csv
 type,ax,ay,az,bx,by,bz,cx,cy,cz,dx,dy,dz
@@ -123,77 +119,49 @@ triangle,128,70,25,128,170,25,128,70,125,,,
 trapezoid,128,80,40,128,120,40,128,60,100,128,140,100
 ```
 
-For three points the columns represent (a,b,c); for four they represent
-(a1,a2,b,c). A triangle-only file may omit the fourth point's columns.
-Every populated row requires a valid type/count and all used coordinates.
-Completely empty rows are ignored; malformed rows report their CSV line.
+An optional metadata/index column is ignored. Headers tolerate surrounding
+spaces and a UTF-8 BOM. Triangles may omit fourth-point columns. Completely
+empty rows are ignored; malformed populated rows report their CSV line.
+The assignment sheet's captured fixture is in `tests/fixtures/`; its last
+two records parse but fail the stated equal-leg geometry requirement.
 
-The [linked assignment sheet](https://docs.google.com/spreadsheets/d/1Tfy1yMYhAJjRBA8ZpRp_07pZXqGtxWhWoP02yZW1FQE/edit)
-is captured in tests/fixtures/assignment-example.csv. Its header and all four
-records parse, including its rectangle. Its third and fourth records have
-unequal legs and are rejected during geometry validation; format compatibility
-does not bypass the assignment's mathematical input requirements.
-
-## Tests
+## Verify and measure
 
 ```bash
 python -m unittest discover -s tests -v
+python -m scripts.create_demo data/MRHead_1.nrrd --verify-only
+python -m scripts.benchmark_suite --json results/benchmark.json
 ```
 
-An individual module can also run as:
+The benchmark measures eight geometries in C and Fortran memory layouts on
+a seeded 500^3 uint8 volume. Each case has three warmups and three trials of
+40 projections. Computation includes validation, allocation and sampling;
+NRRD loading, video encoding and compilation warmup are excluded.
+[RESULTS.md](docs/RESULTS.md) summarizes the final measured rates and limits.
+Playback FPS is separate from computation FPS.
 
-```bash
-python -m tests.test_coordinates
-```
+## Submission map
 
-Tests include complete image comparisons against an independent scalar
-reference, hand-computed unit-step regressions, EPS boundaries, invalid
-trapezoids, tilted planes, all unsigned dtypes, both CSV schemas and real
-NRRD->CSV->MP4 encoding/decoding. See [TESTING.md](docs/TESTING.md).
-
-## Performance
-
-```bash
-python -m scripts.benchmark_suite --json results/benchmark-current.json
-python -m scripts.benchmark
-python -m scripts.benchmark_trapezoid
-```
-
-These measure computation including geometry validation and allocation,
-excluding NRRD loading and video encoding. Output size and orientation affect
-throughput. See [RESULTS.md](docs/RESULTS.md) for reproducible measurements;
-a fast small plane alone does not establish the over-30-FPS requirement for
-larger planes.
-
-The suite covers eight geometries in both C and Fortran memory order on a
-seeded random 500^3 uint8 volume. It records three warmups and three trials
-of forty timed projections, plus environment details and individual timings.
-
-In the final original-project run, all sixteen case/layout mean rates exceeded
-100 FPS; the lowest was 104.42 FPS. The slowest individual trial was 98.81 FPS.
-The source-hashed [accepted run](results/benchmark-submission-env.json) records
-the measured scope, environment and warmup; it is not a universal guarantee.
-
-## Layout and documents
-
-| Path | Purpose |
+| Assignment deliverable | Location |
 |---|---|
-| projection.py | Geometry validation and unit-distance projection |
-| Ex0.py | CSV parsing, normalization and atomic MP4 creation |
-| planes.csv | Three MRI demonstration planes |
-| tests/ | Discoverable unit tests, scalar reference and CSV fixture |
-| scripts/ | Benchmark, MRI PNG and metadata tools |
-| docs/SRS.md | Requirements and acceptance criteria |
-| docs/ALGORITHM.md | Numerical contract, pseudocode and complexity |
-| docs/DATASET.md | Dataset definition and provenance |
-| docs/TESTING.md | Verification strategy and coverage |
-| docs/RESULTS.md | Measured experiments and limitations |
-| docs/CHANGELOG.md | Detailed changes since the reviewed baseline |
-| docs/DEMO.md | Reproducible 60-plane raw video and 720p presentation |
-| docs/ASSIGNMENT_COMPLIANCE.md | Supplied PDF requirements and acceptance evidence |
-| scripts/create_demo.py | Generate, render and decode-verify the full MRI demo |
+| Problem, scope and repository | This README and Git history |
+| Software requirements | [SRS.md](docs/SRS.md) |
+| Detailed algorithm | [ALGORITHM.md](docs/ALGORITHM.md) |
+| NRRD dataset definition | [DATASET.md](docs/DATASET.md) |
+| Testing strategy | [TESTING.md](docs/TESTING.md) and `tests/` |
+| Implementation | `projection.py`, `Ex0.py`, `scripts/` |
+| Required main and MP4 demonstration | Commands above and `results/demo.mp4` |
+| Experiment and short results | [RESULTS.md](docs/RESULTS.md), `results/benchmark.json` |
 
-The application keeps all computed projections in memory before encoding.
-Nearest-neighbor sampling can alias. Physical-coordinate conversion and GPU
-execution are outside scope. Large coordinate magnitudes can produce large
-canvases even for small input volumes.
+[ASSIGNMENT_COMPLIANCE.md](docs/ASSIGNMENT_COMPLIANCE.md) provides the complete
+requirement checklist. [DEMO.md](docs/DEMO.md) explains the MRI presentation.
+[CHANGELOG.md](docs/CHANGELOG.md) preserves development history.
+
+`results/` contains submitted videos and current evidence. Earlier benchmark
+reports remain available in Git history. `examples/` holds additional CSV
+inputs; large volumes and local generated files are ignored.
+
+Limitations: all projection matrices are retained until encoding, so memory
+grows with the CSV length. Nearest-neighbor sampling can alias. Very large
+coordinates can allocate large canvases. Physical-coordinate conversion and
+GPU processing are outside scope.

@@ -82,10 +82,15 @@ have a negative offset: shift every row right by -min(0,min(offset)) and
 enlarge the canvas if necessary so no requested sample is discarded.
 All unspecified output pixels are zero.
 
-A sample is valid only when each continuous coordinate lies in [0,size-1].
-Nearest-neighbor indexing is floor(coordinate+0.5), including half ties
-toward the higher index. Bounds are checked BEFORE rounding. Background and
-out-of-volume samples remain zero, including with signed int16 input.
+Samples use continuous bounds [0,size-1] before nearest-neighbor indexing
+floor(coordinate+0.5), including half ties toward the higher index.
+Computed scanline coordinates allow a boundary deviation of at most
+8*float64_epsilon*max(1,size-1) per axis. Normalized-vector arithmetic can
+otherwise evaluate an exact endpoint such as 25*(7/25) as 7+1 ULP and lose
+the final voxel. This allowance is at most about 1.82e-12 for permitted
+volume sizes; genuinely exterior samples remain zero. It does not alter the
+leg EPS or the strict bounds on explicit sample_volume point inputs.
+Background remains zero, including with signed int16 input.
 
 ## Pseudocode
 

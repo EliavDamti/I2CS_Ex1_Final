@@ -1,92 +1,69 @@
-# Testing strategy and current coverage
+﻿# Testing strategy
 
-Run from the repository root:
+Final acceptance: **45 tests passed** on 2026-11-02 with Python 3.12.10 and
+the versions in `requirements-lock.txt`.
 
 ```bash
 python -m unittest discover -s tests -v
 ```
 
-Tests use unittest from Python's standard library. Dependencies come from
-requirements.txt. Test modules are also executable with python -m
-tests.test_coordinates (without a .py suffix).
+Tests use standard-library unittest. Individual modules can run with
+`python -m tests.test_coordinates`. No FFmpeg integration test is skipped.
 
-## Core acceptance coverage
+## Numerical correctness
 
-- Hand-computed coordinate rows distinguish unit stepping from the old
-  interpolated sampling: the first row contains [232,322], not [232,332,322].
-- An independent scalar reference compares complete images for both shapes,
-  including fractional lengths, tilted planes, axis permutations and array
-  views with noncontiguous and negative strides.
-- Continuous bounds, nearest-neighbor half ties and exterior regions.
-- Exact unsigned extrema for all three assignment dtypes; signed int16 MRI
-  compatibility and negative values.
-- EPS acceptance/rejection at multiple scales, the strict tolerance boundary,
-  equal bases, the assignment rectangle and sheared equal-base shapes.
-- Unequal legs, reversed/opposite/nonparallel bases, noncoplanar points,
-  duplicate points and a collinear triangle with equal legs.
-- Empty/oversized/non-3D volumes, unsupported dtypes and invalid vertices.
+- Hand-computed voxel-coded rows distinguish normalized unit steps from
+  endpoint interpolation and verify centering.
+- Complete matrices are compared with a separate scalar reference for
+  fractional/oblique planes, axis permutations, negative strides and seeded
+  random data, including C/Fortran layouts and all required unsigned types.
+- Unsigned extrema remain exact; signed int16 MRI values are also covered.
+- Strict absolute EPS boundaries, rotated equal bases, genuine base reversals,
+  collinearity, nonparallel/noncoplanar inputs and malformed vertices.
+- Volume shape/type restrictions, nearest-neighbor half ties and exterior data.
+- A hand-specified 7-24-25 rectangle on an 8x25x2 volume must return a complete
+  2x26 matrix of 123s. This regression is checked across axis permutations and
+  both backends without deriving its expectation from the scalar reference.
+- Genuinely exterior scanlines remain zero; explicit sample_volume inputs
+  outside the continuous bounds are not clamped.
 
-The reference intentionally uses slow scalar arithmetic rather than calling
-the production sampling kernel. Full-output assertions prevent a constant
-volume or a single last-row assertion from hiding coordinate errors.
+## CSV and actual video integration
 
-## CSV and video integration
+Both supported schemas, BOM/whitespace, optional metadata/fourth coordinates,
+blank rows, duplicate/missing headers, invalid types/counts and nonfinite
+coordinates are covered. Populated invalid rows must fail with a line number.
 
-- Both CSV schemas map to identical ordered points. The original assignment
-  fixture is read in full, including its rectangle.
-- BOM/whitespace, optional fourth coordinates for triangles, blank lines,
-  duplicate/missing/ambiguous headers, wrong counts, short/extra rows,
-  nonnumeric/nonfinite coordinates and populated rows with a blank type.
-- Actual NRRD write/read and actual FFmpeg H.264 encoding/decoding for uint8,
-  uint16 and uint32, with exactly three frames in known white/black/gray order.
-- Even common frame dimensions, playback rate and independently expected
-  center intensities, allowing eight grayscale levels for lossy compression.
-- CLI success and nonzero invalid-record exit; existing output preservation.
-- Simulated encoder failure verifies temporary cleanup and output preservation.
-- Missing/unsupported NRRD inputs, uint32 normalization precision, constant
-  zero input, signed display ranges and centering validation.
+Actual NRRDs and H.264 videos are written/read for uint8, uint16 and uint32.
+Decoded white/black/gray slices verify order and independently known center
+intensities, common even dimensions and 2 FPS playback. CLI failures and a
+simulated encoder failure verify preservation of existing output and temporary
+file cleanup.
 
-## Acceleration verification
+## Backends and data
 
-The full suite requires the installed Numba accelerator to be active and have
-compiled a native signature. It also explicitly forces the NumPy fallback and
-tests nonnative-endian data without loss. Twenty-four seeded random planes of
-each shape compare complete images against the scalar reference, including
-samples outside the volume.
+Tests require the installed Numba accelerator to compile a native signature.
+The NumPy fallback and nonnative-endian input are separately exercised.
+Deterministic NRRD generators are reloaded and checked for expected voxels,
+extrema and hashes. Downloader checksum rejection and overwrite protection
+are tested offline.
 
-No FFmpeg integration test is silently skipped.
+## Full demonstrations
 
-## Reproducible datasets
+```bash
+python -m scripts.create_demo data/MRHead_1.nrrd --verify-only
+```
 
-Generate/reload all three unsigned NRRDs, validate extrema and voxel hashes,
-and verify every generated plane. Check downloader hash mismatch and existing
-file protection without network access. The actual canonical Slicer download
-was separately verified against the original MRI's full voxel array.
+The complete MRI verification decodes 60 raw frames and 432 presentation
+frames. Every raw frame is compared with its ordered CSV projection, allowing
+mean absolute encoding error up to 8 grayscale levels. Projection precision
+is tested before lossy compression. Short synthetic demo creation/decoding
+and inconsistent-manifest rejection are also part of the automated suite.
 
-Recorded acceptance result: 35 tests passed, including real codec integration,
-both sampling backends and 48 seeded random full-matrix comparisons.
-The same 35 tests also passed from the original project folder with its own
-.venv (Python 3.12.10, NumPy 2.5.4, Numba 0.68.1); pip check reported no broken
-requirements. That environment's performance is recorded separately in RESULTS.
+The final biscuit (120 frames) and croissant (100 frames) outputs were also
+fully decoded and compared with their CSV rows. Their source hashes and
+summary results are in `results/examples-validation.json`. Croissant changes
+viewpoints sharply because the input CSV does so; smoothness is not a pass
+condition for arbitrary ordered planes.
 
-After reviewing the attached PDF directly, the layout/stability extension adds
-24 random Fortran-order uint32 plane comparisons, a hand-specified complete
-rotated 4x5 rectangle, and a genuine 4+1e-10 leg that must keep its fifth row.
-This guards numerical integer boundaries separately from the assignment EPS.
-
-The full demonstration extension adds three integration/definition tests:
-all sixty serialized MRI planes and section order; real synthetic NRRD to raw
-and presentation videos with decoding and mismatch rejection; invalid sweep
-inputs. The final suite contains 41 passing tests. The full MRI experiment
-separately decodes 60 raw and 432 presentation frames and compares every raw
-frame with its ordered CSV projection. See demo-validation.json and DEMO.md.
-The final 41-case suite and full video verification were also rerun successfully
-inside the original project's .venv after the commits were applied.
-Performance measurements belong in RESULTS.md and are separate from
-correctness tests; FPS is not a hardware-independent unit-test assertion.
-
-The biscuit CSV exposed a separate base-order roundoff regression: equal
-rotated bases differed by one or two float64 ULPs. Two added cases accept the
-reported coordinates and reject a genuine 1e-10 base reversal. The suite now
-contains 43 tests. The user's complete 120-record input is also validated and
-encoded separately; the user-owned CSV is not added to the repository.
+Performance is measured separately, using the final source hash recorded in
+`results/benchmark.json`; hardware-dependent FPS is not a unit-test assertion.

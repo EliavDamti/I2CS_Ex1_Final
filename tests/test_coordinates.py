@@ -1,5 +1,7 @@
 import unittest
+from unittest.mock import patch
 import numpy as np
+import projection
 from projection import project_triangle, project_trapezoid, sample_volume
 from tests.reference import reference
 
@@ -77,6 +79,30 @@ class CoordinateTests(unittest.TestCase):
         length = 4 + 1e-10
         actual = project_triangle(self.volume, (2, 2, 2), (2, 2+length, 2), (2, 2, 2+length))
         self.assertEqual(actual.shape[0], 5)
+
+    def test_rotated_rectangle_preserves_exact_volume_boundary(self):
+        # A 7-24-25 edge ends at x=7, but float64 produces 7+1 ULP.
+        # Expected pixels are analytic, independent of the scalar reference.
+        points = np.array(((0, 0, 0), (7, 24, 0), (0, 0, 1), (7, 24, 1)), dtype=float)
+        volume = np.full((8, 25, 2), 123, dtype=np.uint8)
+        for fallback in (False, True):
+            backend = None if fallback else projection._fill_scanlines_compiled
+            with patch('projection._fill_scanlines_compiled', backend):
+                for axes in ((0, 1, 2), (1, 2, 0), (2, 0, 1)):
+                    with self.subTest(fallback=fallback, axes=axes):
+                        data, vertices = volume.transpose(axes), points[:, axes]
+                        np.testing.assert_array_equal(project_trapezoid(data, *vertices),
+                                                      np.full((2, 26), 123, dtype=np.uint8))
+                        # Shift the entire plane genuinely beyond a boundary.
+                        outside = vertices.copy()
+                        flat_axis = axes.index(2)
+                        outside[:, flat_axis] += 1 + 1e-8
+                        self.assertFalse(project_trapezoid(data, *outside).any())
+
+    def test_explicit_outside_sample_is_not_clamped(self):
+        # The roundoff allowance applies to computed scanlines, not user points.
+        self.assertEqual(sample_volume(self.volume, (9+1e-12, 3, 4)), 0)
+        self.assertEqual(sample_volume(self.volume, (-1e-12, 3, 4)), 0)
 
 
 if __name__ == "__main__":

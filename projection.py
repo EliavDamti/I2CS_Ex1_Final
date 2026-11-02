@@ -15,6 +15,10 @@ BACKEND = "numba" if njit is not None else "numpy"
 def _fill_scanlines(volume, result, starts, directions, counts, offsets, column_major=False):
     """Streaming scalar kernel, compiled without fast-math reassociation."""
     sx, sy, sz = volume.shape
+    # Arithmetic on normalized vectors can put an exact boundary endpoint
+    # a few ULPs outside the volume (for example 25 * (7 / 25) > 7).
+    epsilon = 8 * np.finfo(np.float64).eps
+    tx, ty, tz = epsilon * max(1, sx-1), epsilon * max(1, sy-1), epsilon * max(1, sz-1)
     outer_count = int(counts.max()) if column_major else len(starts)
     for outer in range(outer_count):
         inner_count = len(starts) if column_major else counts[outer]
@@ -26,7 +30,7 @@ def _fill_scanlines(volume, result, starts, directions, counts, offsets, column_
             x = starts[row, 0] + j * directions[row, 0]
             y = starts[row, 1] + j * directions[row, 1]
             z = starts[row, 2] + j * directions[row, 2]
-            if 0 <= x <= sx - 1 and 0 <= y <= sy - 1 and 0 <= z <= sz - 1:
+            if -tx <= x <= sx - 1 + tx and -ty <= y <= sy - 1 + ty and -tz <= z <= sz - 1 + tz:
                 result[row, offsets[row] + j] = volume[
                     math.floor(x + 0.5), math.floor(y + 0.5), math.floor(z + 0.5)]
 
@@ -106,9 +110,10 @@ def _fill_scanlines_numpy(volume, result, starts, directions, counts, offsets):
     width = result.shape[1]
     constant_axes = {}
     for axis, size in enumerate(volume.shape):
+        tolerance = 8 * np.finfo(np.float64).eps * max(1, size-1)
         if np.all(directions[:, axis] == 0) and np.all(starts[:, axis] == starts[0, axis]):
             coordinate = starts[0, axis]
-            if coordinate < 0 or coordinate > size - 1:
+            if coordinate < -tolerance or coordinate > size - 1 + tolerance:
                 return result
             constant_axes[axis] = int(np.floor(coordinate + 0.5))
     columns = np.arange(width)[None, :]
@@ -125,9 +130,10 @@ def _fill_scanlines_numpy(volume, result, starts, directions, counts, offsets):
                 continue
             coordinate = (starts[first:last, axis, None]
                           + local * directions[first:last, axis, None])
-            valid &= (coordinate >= 0) & (coordinate <= size - 1)
-            # Clipping only makes masked indices safe to convert. It never
-            # makes an out-of-bounds sample valid.
+            tolerance = 8 * np.finfo(np.float64).eps * max(1, size-1)
+            valid &= (coordinate >= -tolerance) & (coordinate <= size - 1 + tolerance)
+            # Clamp arithmetic roundoff at a boundary and make masked indices
+            # safe to convert; genuinely exterior samples remain invalid.
             np.clip(coordinate, 0, size - 1, out=coordinate)
             coordinate += 0.5
             np.floor(coordinate, out=coordinate)

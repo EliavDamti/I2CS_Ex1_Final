@@ -12,3 +12,11 @@ data/generated/
 # Generated images and videos
 *.mp4
 mri_projection.png
+
+# Local diagnostics and extra generated outputs
+tmp/
+results/local/
+
+# Additional submitted examples
+!/results/biscuit.mp4
+!/results/croissant.mp4

@@ -145,3 +145,23 @@ Baseline: a6ebdf6, which already fixed the EPS/equal-base issues from the
 - Validate/encode the complete user-owned CSV without rewriting or committing
   it. Refresh the demo's source fingerprint only after proving all sixty
   prior projection matrices are unchanged by this validation-only fix.
+
+## 2026-11-02 - final submission cleanup and boundary correction
+
+- Fix floating-point loss of exact boundary voxels in both sampling backends.
+  Use a machine-epsilon-scaled allowance only on computed scanline bounds;
+  explicit point sampling and genuinely exterior positions retain zero output.
+- Add an analytically known 7-24-25 rectangle regression across axes/backends
+  and explicit-outside tests. All 45 tests pass; pip check is clean.
+- Move supplied biscuit/croissant CSVs into examples/ without changing bytes.
+  Submit clearly named biscuit.mp4 and croissant.mp4, with all 220 frames
+  decoded/compared and a compact source-hashed validation record.
+- Rebuild the complete MRI demo/presentation and synthetic uint32 output.
+- Replace historical benchmark files with one measurement of the final source,
+  results/benchmark.json. Older reports remain accessible in earlier commits.
+  Every trial exceeds 30 FPS; two case means remain below the 100 FPS target.
+- Replace stale results/test acceptance narratives with current summaries,
+  correct the MRI reproduction command, and map every required deliverable.
+- Add a tested Python 3.12 requirements lock, results/examples directory guides
+  and ignore rules for local diagnostics. Preserve old exploratory images and
+  output.mp4 under the ignored results/local/ directory.
